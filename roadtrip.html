@@ -2934,14 +2934,20 @@
           const postSeg =
             POST_STL_CITIES[postStlMode]?.days ??
             POST_STL_CITIES.pittsburgh.days;
-          if (postStlMode !== "bookit") {
-            seq.push({ id: postStlMode, kind: "waypoint" });
-          }
-          postSeg.forEach((d) =>
+          postSeg.forEach((d) => {
             (d.wps || []).forEach((wp) =>
               seq.push({ id: wp, kind: "passthrough" }),
-            ),
-          );
+            );
+            const dest = d.overnight?.toLowerCase();
+            if (
+              dest &&
+              dest !== "brooklyn" &&
+              postStlMode !== "bookit" &&
+              L_PLACES[dest]
+            ) {
+              seq.push({ id: dest, kind: "waypoint" });
+            }
+          });
           seq.push({ id: "brooklyn", kind: "endpoint" });
 
           const line = seq
