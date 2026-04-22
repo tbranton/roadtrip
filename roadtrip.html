@@ -966,6 +966,14 @@
         border-radius: 50%;
         background: var(--variant-color, var(--terracotta));
       }
+      .marker-pin.passthrough {
+        width: 10px;
+        height: 10px;
+        border-width: 2px;
+        background: var(--variant-color, var(--terracotta));
+        opacity: 0.75;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      }
       .leaflet-popup-content-wrapper {
         border-radius: 3px;
         background: var(--cream-soft);
@@ -1164,6 +1172,25 @@
         font-size: 11px;
         color: var(--ink-soft);
         font-weight: 500;
+      }
+      .pill-passthrough {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        font-size: 10px;
+        color: var(--ink-soft);
+        background: var(--cream-soft);
+        border: 1.5px solid var(--rule);
+        border-radius: 100px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+      .passthrough-dot {
+        font-size: 8px;
+        line-height: 1;
+        color: var(--terracotta);
       }
 
       /* --- Day Timeline --- */
@@ -2657,7 +2684,7 @@
       // Master switch. When false, app behaves as if everything is an overnight
       // (current behavior). When true, pass-through stops add hours to the
       // enclosing drive day but do not consume a night.
-      const ENABLE_STOP_TYPES = false;
+      const ENABLE_STOP_TYPES = true;
 
       // Default stop type per park id. Destination-scale parks are overnights;
       // quick-visit stops are pass-throughs. Anything not listed falls back
@@ -2857,12 +2884,37 @@
           date: "",
         });
 
+        // Pass-throughs queue up and fold into the next overnight's driving day.
+        const pending = [];
+
+        const computeLeg = (fromLoc) => {
+          let drive = 0;
+          let visit = 0;
+          let prev = fromLoc;
+          const path = [];
+          for (const pid of pending) {
+            const p = L_PLACES[pid];
+            drive += haversineHours(prev, p);
+            visit += getPassThroughHours(pid);
+            path.push(pid);
+            prev = p;
+          }
+          return { drive, visit, prev, path };
+        };
+
         for (const id of sorted) {
           const park = L_PLACES[id];
-          const nights = parkNights.get(id) ?? 1;
-          const driveToThis = haversineHours(prevLoc, park);
-          const visitH = park.visitHours || 4;
-          const wouldAdd = driveToThis + visitH;
+
+          if (isPassThrough(id)) {
+            pending.push(id);
+            continue;
+          }
+
+          // Overnight park: compute drive+visit from prevLoc through pending pass-throughs to this park.
+          let leg = computeLeg(prevLoc);
+          let driveToThis = leg.drive + haversineHours(leg.prev, park);
+          let visitH = leg.visit + (park.visitHours || 4);
+          let wouldAdd = driveToThis + visitH;
 
           if (
             currentDay.parks.length > 0 &&
@@ -2871,15 +2923,21 @@
             days.push(currentDay);
             prevLoc = L_PLACES[currentDay.parks[currentDay.parks.length - 1]];
             currentDay = mkDay();
+            // Recompute leg from the new prevLoc (in case it changed).
+            leg = computeLeg(prevLoc);
+            driveToThis = leg.drive + haversineHours(leg.prev, park);
+            visitH = leg.visit + (park.visitHours || 4);
           }
 
-          const actualDrive = haversineHours(prevLoc, park);
-          currentDay.driveHours += actualDrive;
+          currentDay.driveHours += driveToThis;
           currentDay.visitHours += visitH;
-          currentDay.totalHours += actualDrive + visitH;
+          currentDay.totalHours += driveToThis + visitH;
+          for (const pid of pending) currentDay.parks.push(pid);
           currentDay.parks.push(id);
+          pending.length = 0;
           prevLoc = park;
 
+          const nights = parkNights.get(id) ?? 1;
           // Extra nights: end this day here, insert dedicated full days
           if (nights > 1) {
             days.push(currentDay);
@@ -2897,6 +2955,21 @@
           }
         }
         if (currentDay.parks.length > 0) days.push(currentDay);
+
+        // Trailing pass-throughs (no overnight after them): fold onto the last day's drive.
+        if (pending.length > 0 && days.length > 0) {
+          const last = days[days.length - 1];
+          let prev = L_PLACES[last.parks[last.parks.length - 1]];
+          for (const pid of pending) {
+            const p = L_PLACES[pid];
+            last.driveHours += haversineHours(prev, p);
+            last.visitHours += getPassThroughHours(pid);
+            last.totalHours = last.driveHours + last.visitHours;
+            last.parks.push(pid);
+            prev = p;
+          }
+          pending.length = 0;
+        }
 
         // Assign dates
         days.forEach((d, i) => {
@@ -3081,22 +3154,40 @@
                 .bindPopup(`<strong>${p.name}</strong>${p.blurb || ""}`)
                 .addTo(layer);
             } else if (s.kind === "stop") {
-              stopNum += 1;
-              const icon = L.divIcon({
-                className: "",
-                html: `<div class="marker-pin" style="background:${COLOR_HEX}">${stopNum}</div>`,
-                iconSize: [28, 28],
-                iconAnchor: [14, 14],
-              });
-              const popup = `<strong>${p.name}</strong>${p.overview ? p.overview.slice(0, 120) + "…" : ""}`;
-              const marker = L.marker([p.lat, p.lng], { icon })
-                .bindPopup(popup)
-                .addTo(layer);
-              marker.on("click", () => {
-                const el = document.getElementById(`park-${s.id}`);
-                if (el)
-                  el.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
+              if (isPassThrough(s.id)) {
+                const icon = L.divIcon({
+                  className: "",
+                  html: `<div class="marker-pin passthrough" style="--variant-color:${COLOR_HEX}"></div>`,
+                  iconSize: [12, 12],
+                  iconAnchor: [6, 6],
+                });
+                const popup = `<strong>${p.name}</strong>Pass-through${p.time ? ` · ${p.time}` : ""}`;
+                const marker = L.marker([p.lat, p.lng], { icon })
+                  .bindPopup(popup)
+                  .addTo(layer);
+                marker.on("click", () => {
+                  const el = document.getElementById(`park-${s.id}`);
+                  if (el)
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              } else {
+                stopNum += 1;
+                const icon = L.divIcon({
+                  className: "",
+                  html: `<div class="marker-pin" style="background:${COLOR_HEX}">${stopNum}</div>`,
+                  iconSize: [28, 28],
+                  iconAnchor: [14, 14],
+                });
+                const popup = `<strong>${p.name}</strong>${p.overview ? p.overview.slice(0, 120) + "…" : ""}`;
+                const marker = L.marker([p.lat, p.lng], { icon })
+                  .bindPopup(popup)
+                  .addTo(layer);
+                marker.on("click", () => {
+                  const el = document.getElementById(`park-${s.id}`);
+                  if (el)
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }
             }
           });
 
@@ -4178,7 +4269,18 @@
                           {p.name}
                           {on && <span className="pill-check">✓</span>}
                         </button>
-                        {on && (
+                        {on && isPassThrough(id) && (
+                          <div
+                            className="pill-passthrough"
+                            title="Pass-through stop — no overnight"
+                          >
+                            <span className="passthrough-dot">●</span>
+                            <span className="passthrough-label">
+                              pass-through
+                            </span>
+                          </div>
+                        )}
+                        {on && !isPassThrough(id) && (
                           <div className="pill-nights-ctrl">
                             <button
                               className="nights-adj"
@@ -4257,7 +4359,18 @@
                           {p.name}
                           {on && <span className="pill-check">✓</span>}
                         </button>
-                        {on && (
+                        {on && isPassThrough(id) && (
+                          <div
+                            className="pill-passthrough"
+                            title="Pass-through stop — no overnight"
+                          >
+                            <span className="passthrough-dot">●</span>
+                            <span className="passthrough-label">
+                              pass-through
+                            </span>
+                          </div>
+                        )}
+                        {on && !isPassThrough(id) && (
                           <div className="pill-nights-ctrl">
                             <button
                               className="nights-adj"
