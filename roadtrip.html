@@ -1173,24 +1173,12 @@
         color: var(--ink-soft);
         font-weight: 500;
       }
-      .pill-passthrough {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
-        font-size: 10px;
-        color: var(--ink-soft);
-        background: var(--cream-soft);
-        border: 1.5px solid var(--rule);
-        border-radius: 100px;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        font-weight: 500;
+      .pill-nights-ctrl.passthrough {
+        border-color: var(--terracotta);
       }
-      .passthrough-dot {
-        font-size: 8px;
-        line-height: 1;
+      .pill-nights-ctrl.passthrough .nights-count {
         color: var(--terracotta);
+        font-weight: 600;
       }
 
       /* --- Day Timeline --- */
@@ -1251,6 +1239,21 @@
       .tl-bubble.extra-night {
         background: #8b5e3c;
         border-color: #8b5e3c;
+      }
+      .tl-bubble.filled.passthrough {
+        background: var(--cream-soft);
+        border-style: dashed;
+        border-width: 1.5px;
+        color: var(--ink-soft);
+        font-weight: 500;
+        font-size: 9px;
+        opacity: 0.9;
+      }
+      .tl-bubble.filled.passthrough::before {
+        content: "● ";
+        color: var(--terracotta);
+        font-size: 7px;
+        vertical-align: middle;
       }
       .tl-bubble.drive-day {
         background: var(--ink-soft, #888);
@@ -2728,17 +2731,30 @@
       };
 
       // Helpers — always respect the flag. When flag is off, every park is
-      // treated as an overnight and pass-through hours are ignored.
-      function getStopType(id) {
-        if (!ENABLE_STOP_TYPES) return "overnight";
-        return PARK_STOP_TYPES[id] || "overnight";
+      // treated as an overnight (nights >= 1) and pass-through hours ignored.
+      //
+      // Stop type is DERIVED from the current night count, not a separate
+      // field. PARK_STOP_TYPES only supplies the default on first toggle:
+      // "pass-through" parks default to 0 nights, others default to 1.
+      // The user can always override with the ± buttons.
+      function defaultNights(id) {
+        if (!ENABLE_STOP_TYPES) return 1;
+        return PARK_STOP_TYPES[id] === "pass-through" ? 0 : 1;
+      }
+      function getNightsFor(id, parkNights) {
+        if (!parkNights) return defaultNights(id);
+        return parkNights.get(id) ?? defaultNights(id);
       }
       function getPassThroughHours(id) {
         if (!ENABLE_STOP_TYPES) return 0;
-        return PARK_PASS_THROUGH_HOURS[id] || 0;
+        return PARK_PASS_THROUGH_HOURS[id] || 1;
       }
-      function isPassThrough(id) {
-        return getStopType(id) === "pass-through";
+      function isPassThrough(id, parkNights) {
+        if (!ENABLE_STOP_TYPES) return false;
+        return getNightsFor(id, parkNights) === 0;
+      }
+      function getStopType(id, parkNights) {
+        return isPassThrough(id, parkNights) ? "pass-through" : "overnight";
       }
 
       function sharesCluster(a, b) {
@@ -2843,6 +2859,7 @@
             daysNeeded: 0,
             overLimit: false,
             maxDays: MAX_DAYS,
+            passThroughIds: new Set(),
           };
         }
 
@@ -2905,7 +2922,7 @@
         for (const id of sorted) {
           const park = L_PLACES[id];
 
-          if (isPassThrough(id)) {
+          if (isPassThrough(id, parkNights)) {
             pending.push(id);
             continue;
           }
@@ -2937,7 +2954,7 @@
           pending.length = 0;
           prevLoc = park;
 
-          const nights = parkNights.get(id) ?? 1;
+          const nights = getNightsFor(id, parkNights);
           // Extra nights: end this day here, insert dedicated full days
           if (nights > 1) {
             days.push(currentDay);
@@ -3025,6 +3042,12 @@
 
         const daysNeeded = days.length + dallasLegs.length;
 
+        // Set of park ids that are currently pass-throughs, so downstream
+        // consumers (map, timeline) can style them without threading parkNights.
+        const passThroughIds = new Set(
+          sorted.filter((id) => isPassThrough(id, parkNights)),
+        );
+
         return {
           days,
           dallasLegs,
@@ -3033,6 +3056,7 @@
           daysNeeded,
           overLimit: daysNeeded > MAX_DAYS,
           maxDays: MAX_DAYS,
+          passThroughIds,
         };
       }
 
@@ -3154,7 +3178,7 @@
                 .bindPopup(`<strong>${p.name}</strong>${p.blurb || ""}`)
                 .addTo(layer);
             } else if (s.kind === "stop") {
-              if (isPassThrough(s.id)) {
+              if (itinerary.passThroughIds?.has(s.id)) {
                 const icon = L.divIcon({
                   className: "",
                   html: `<div class="marker-pin passthrough" style="--variant-color:${COLOR_HEX}"></div>`,
@@ -4248,7 +4272,7 @@
                     const p = L_PLACES[id];
                     if (!p) return null;
                     const on = selectedParks.has(id);
-                    const nights = parkNights.get(id) ?? 1;
+                    const nights = getNightsFor(id, parkNights);
                     const color = activeColors?.[id];
                     return (
                       <div key={id} className="park-pill-group">
@@ -4269,32 +4293,28 @@
                           {p.name}
                           {on && <span className="pill-check">✓</span>}
                         </button>
-                        {on && isPassThrough(id) && (
+                        {on && (
                           <div
-                            className="pill-passthrough"
-                            title="Pass-through stop — no overnight"
+                            className={`pill-nights-ctrl${nights === 0 ? " passthrough" : ""}`}
+                            title={
+                              nights === 0
+                                ? "Pass-through stop — no overnight"
+                                : undefined
+                            }
                           >
-                            <span className="passthrough-dot">●</span>
-                            <span className="passthrough-label">
-                              pass-through
-                            </span>
-                          </div>
-                        )}
-                        {on && !isPassThrough(id) && (
-                          <div className="pill-nights-ctrl">
                             <button
                               className="nights-adj"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onAdjustNights(id, -1);
                               }}
-                              disabled={nights <= 1}
+                              disabled={nights <= (ENABLE_STOP_TYPES ? 0 : 1)}
                             >
                               −
                             </button>
                             <span className="nights-count">
                               {nights}
-                              {"🌙"}
+                              {nights === 0 ? "●" : "🌙"}
                             </span>
                             <button
                               className="nights-adj"
@@ -4338,7 +4358,7 @@
                     const p = L_PLACES[id];
                     if (!p) return null;
                     const on = selectedParks.has(id);
-                    const nights = parkNights.get(id) ?? 1;
+                    const nights = getNightsFor(id, parkNights);
                     const color = activeColors?.[id];
                     return (
                       <div key={id} className="park-pill-group">
@@ -4359,32 +4379,28 @@
                           {p.name}
                           {on && <span className="pill-check">✓</span>}
                         </button>
-                        {on && isPassThrough(id) && (
+                        {on && (
                           <div
-                            className="pill-passthrough"
-                            title="Pass-through stop — no overnight"
+                            className={`pill-nights-ctrl${nights === 0 ? " passthrough" : ""}`}
+                            title={
+                              nights === 0
+                                ? "Pass-through stop — no overnight"
+                                : undefined
+                            }
                           >
-                            <span className="passthrough-dot">●</span>
-                            <span className="passthrough-label">
-                              pass-through
-                            </span>
-                          </div>
-                        )}
-                        {on && !isPassThrough(id) && (
-                          <div className="pill-nights-ctrl">
                             <button
                               className="nights-adj"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onAdjustNights(id, -1);
                               }}
-                              disabled={nights <= 1}
+                              disabled={nights <= (ENABLE_STOP_TYPES ? 0 : 1)}
                             >
                               −
                             </button>
                             <span className="nights-count">
                               {nights}
-                              {"🌙"}
+                              {nights === 0 ? "●" : "🌙"}
                             </span>
                             <button
                               className="nights-adj"
@@ -4481,12 +4497,14 @@
           }
           const dayDate = slotDate(i);
           day.parks.forEach((pid, j) => {
+            const isPass = itinerary.passThroughIds?.has(pid);
             stops.push({
               type: day.extraNight ? "park-extra" : "park",
               label: tlName(pid) + (day.extraNight && j === 0 ? " 🌙" : ""),
               locId: pid,
               date: j === 0 ? dayDate : null,
               overflow: itinerary.overLimit,
+              passthrough: isPass,
             });
           });
         }
@@ -4541,13 +4559,17 @@
               ? "tl-bubble endpoint"
               : s.type === "empty"
                 ? "tl-bubble"
-                : `tl-bubble filled${s.type === "park-extra" ? " extra-night" : ""}${s.type === "fixed" ? " fixed" : ""}`;
+                : `tl-bubble filled${s.type === "park-extra" ? " extra-night" : ""}${s.type === "fixed" ? " fixed" : ""}${s.passthrough ? " passthrough" : ""}`;
           const prev = i > 0 ? stops[i - 1] : null;
           const emDashFromPrev =
             prev && prev.locId && s.locId && sharesCluster(prev.locId, s.locId);
           const slotCls = emDashFromPrev ? "tl-slot cont" : "tl-slot";
           const isPark = s.type === "park" || s.type === "park-extra";
-          const chunkColor = isPark ? activeColors[s.locId] : null;
+          // Pass-through pills take their styling from CSS (.passthrough)
+          // rather than the cluster color, so they read as "mid-drive stop"
+          // not "overnight."
+          const chunkColor =
+            isPark && !s.passthrough ? activeColors[s.locId] : null;
           let pillStyle = chunkColor
             ? { background: chunkColor, borderColor: chunkColor }
             : undefined;
@@ -4757,14 +4779,18 @@
         }
 
         function getNights(id) {
-          return parkNights.get(id) ?? 1;
+          return getNightsFor(id, parkNights);
         }
         function adjustNights(id, delta) {
           setParkNights((prev) => {
             const m = new Map(prev);
-            const next = Math.max(1, Math.min(5, (m.get(id) ?? 1) + delta));
-            if (next === 1) m.delete(id);
-            else m.set(id, next);
+            const cur = m.get(id) ?? defaultNights(id);
+            const min = ENABLE_STOP_TYPES ? 0 : 1;
+            const next = Math.max(min, Math.min(5, cur + delta));
+            // Always persist the explicit choice so the user can cross the
+            // default boundary (e.g. HB 0 → 1 or Santa Fe 1 → 0) without
+            // getting snapped back.
+            m.set(id, next);
             return m;
           });
         }
@@ -4823,8 +4849,14 @@
         const totalMiles = itinerary.totalMiles + 630 + 950;
         const postSeg =
           POST_STL_CITIES[postStlMode]?.days ?? POST_STL_CITIES.pittsburgh.days;
-        const totalDays =
+        const computedDays =
           itinerary.daysNeeded + dallasDays + 1 + stlDays + postSeg.length;
+        // Preserve the head-start buffer: when enabled, the trip calendar
+        // stays Thu 5/7 → Sun 5/17 (11 days) even if pass-throughs shrink
+        // the pre-Dallas pack. Unused days appear as slack between STL and
+        // Brooklyn on the ribbon.
+        const baseDays = headStart ? 11 : 10;
+        const totalDays = Math.max(baseDays, computedDays);
 
         // Build dynamic Dallas/STL day arrays
         const dallasDayCards = Array.from({ length: dallasDays }, (_, i) =>
