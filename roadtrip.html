@@ -394,6 +394,167 @@
         color: var(--ink);
       }
 
+      /* --- Post-STL city picker --- */
+      .city-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      @media (max-width: 480px) {
+        .city-card-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .city-card {
+        position: relative;
+        background: var(--cream-soft);
+        border: 1.5px solid var(--hairline);
+        border-radius: 3px;
+        padding: 11px 12px 10px;
+        cursor: pointer;
+        text-align: left;
+        font-family: inherit;
+        color: inherit;
+        transition: all 0.18s ease;
+        overflow: hidden;
+        width: 100%;
+      }
+      .city-card:hover {
+        border-color: var(--sand);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+      }
+      .city-card[data-selected="true"] {
+        background: var(--ink);
+        color: var(--cream);
+        border-color: var(--ink);
+        box-shadow: var(--shadow-md);
+      }
+      .city-card-name {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        margin-bottom: 2px;
+      }
+      .city-card-tagline {
+        font-size: 11px;
+        color: var(--ink-muted);
+        font-style: italic;
+        line-height: 1.35;
+      }
+      .city-card[data-selected="true"] .city-card-tagline {
+        color: rgba(243, 234, 219, 0.7);
+      }
+      .city-card-stats {
+        font-size: 10px;
+        color: var(--ink-muted);
+        margin-top: 6px;
+        font-family: var(--font-display);
+        letter-spacing: 0.01em;
+      }
+      .city-card[data-selected="true"] .city-card-stats {
+        color: rgba(243, 234, 219, 0.6);
+      }
+      .city-flag {
+        display: inline-block;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 2px 5px;
+        border-radius: 2px;
+        font-weight: 600;
+        margin-left: 5px;
+        vertical-align: middle;
+        background: var(--sage);
+        color: #fff;
+      }
+      .city-card[data-selected="true"] .city-flag {
+        background: rgba(107, 122, 83, 0.6);
+      }
+
+      /* --- City guide (editorial insert) --- */
+      .city-guide {
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 20px 22px 18px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+      .city-guide::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--sage);
+      }
+      .city-guide-header {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .city-guide-name {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+      .city-guide-tagline {
+        font-size: 12px;
+        color: var(--ink-muted);
+        font-style: italic;
+        font-family: var(--font-display);
+        margin-top: 2px;
+      }
+      .city-guide-math {
+        font-size: 11px;
+        color: var(--ink-muted);
+        margin-top: 5px;
+        letter-spacing: 0.02em;
+      }
+      .city-guide-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px 20px;
+      }
+      @media (max-width: 560px) {
+        .city-guide-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .city-guide-section {
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .city-guide-label {
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--sage);
+        margin-bottom: 3px;
+        font-family: var(--font-body);
+      }
+      .city-guide-text {
+        color: var(--ink-soft);
+      }
+      .city-guide-push {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--hairline);
+        font-size: 12px;
+        color: var(--ink-muted);
+        font-style: italic;
+        grid-column: 1 / -1;
+      }
+
       /* --- Day cards --- */
       .day-card {
         background: var(--cream-soft);
@@ -2103,6 +2264,18 @@
           lng: -79.9959,
           type: "waypoint",
         },
+        cleveland: {
+          name: "Cleveland, OH",
+          lat: 41.4993,
+          lng: -81.6944,
+          type: "waypoint",
+        },
+        cincinnati: {
+          name: "Cincinnati, OH",
+          lat: 39.1031,
+          lng: -84.512,
+          type: "waypoint",
+        },
       };
 
       /* ============================================================
@@ -2196,6 +2369,211 @@
           wps: ["indianapolis", "columbus", "pittsburgh"],
         },
       ];
+
+      const POST_STL_CITIES = {
+        pittsburgh: {
+          name: "Pittsburgh",
+          tagline: "The argument for working harder on Day 1",
+          splitMath: "~9 hr from STL · ~6 hr to Brooklyn",
+          recommended: true,
+          days: [
+            {
+              title: "St. Louis → Pittsburgh",
+              drive: { mi: 590, hr: 9 },
+              body: "Long push east on I-70 through Indianapolis and Columbus, then north into Pittsburgh. Worth it — the city rewards the effort. Strip District for late dinner.",
+              stops: [],
+              overnight: "Pittsburgh",
+              wps: ["indianapolis", "columbus"],
+            },
+            {
+              title: "Pittsburgh → Brooklyn",
+              drive: { mi: 370, hr: 6 },
+              body: "Easy morning. PA Turnpike east through the Alleghenies, into NJ via I-78, across the GWB or Verrazzano. Home by early afternoon.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: [],
+            },
+          ],
+          guide: {
+            classic:
+              "A Primanti Bros. sandwich — fries and coleslaw packed inside Italian bread, born in the Strip District in 1933 for overnight truckers. Go to the original 18th Street location in the Strip District, open 24 hours. Cash-friendly. Not gourmet — it's a rite of passage.",
+            dinner:
+              "If Primanti's feels too casual, Butcher and the Rye (downtown) for elevated Appalachian, or Piccolo Forno (Lawrenceville) for wood-fired Italian.",
+            coffee:
+              "Pamela's Diner in the Strip — legendary crepe-style hotcakes. Or De Fer Coffee for a proper third-wave cup.",
+            walk: "The Strip District along Penn Avenue — produce stalls, Italian and Polish markets, Wholey's fish market, Prestogeorge coffee. Hit it Saturday morning if you can.",
+            ifTime:
+              "Ride the Duquesne Incline up Mount Washington at night — the Pittsburgh skyline view is genuinely one of the best urban vistas in the country. Or hit the Andy Warhol Museum (North Shore, seven floors, largest single-artist museum in the US).",
+            pushPast:
+              "If Pittsburgh's too much city after 9 hours, push another 50 miles east to Somerset or Bedford, PA — quiet small-town motels, shaves time off tomorrow.",
+          },
+        },
+        cleveland: {
+          name: "Cleveland",
+          tagline: "The symmetric split, underrated food",
+          splitMath: "~8 hr from STL · ~7.5 hr to Brooklyn",
+          recommended: true,
+          days: [
+            {
+              title: "St. Louis → Cleveland",
+              drive: { mi: 540, hr: 8 },
+              body: "I-70 east through Indianapolis and Columbus, then north on I-71 into Cleveland. Ohio City or Tremont for dinner.",
+              stops: [],
+              overnight: "Cleveland",
+              wps: ["indianapolis", "columbus"],
+            },
+            {
+              title: "Cleveland → Brooklyn",
+              drive: { mi: 460, hr: 7.5 },
+              body: "I-90 east along Lake Erie, into Pennsylvania, pick up I-76 east then I-78 into NJ and Brooklyn. Steady but manageable.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: ["pittsburgh"],
+            },
+          ],
+          guide: {
+            classic:
+              "Pierogies, kielbasa, or a Polish Boy sandwich. For the iconic Cleveland experience, head to West Side Market in Ohio City — a 1912 European-style market with 70+ vendors, gorgeous tilework, 137-ft clock tower. Graze your way through: Kate's Fish, pierogies at Pierogi Palace, crepes, Slovenian sausage.",
+            dinner:
+              "Slyman's Restaurant for the definitive Cleveland corned beef sandwich (old-school deli, lunch only — plan accordingly). For dinner: Lola Bistro downtown, Mabel's BBQ, or Momocho for modern Mex in Ohio City.",
+            coffee:
+              "Rising Star Coffee Roasters in Ohio City, walking distance from West Side Market.",
+            walk: "Ohio City — walkable, centered on West 25th & Lorain. Great breweries (Great Lakes Brewing, Market Garden). Or cross the bridge to Tremont for art galleries and dinner spots.",
+            ifTime:
+              "The Rock & Roll Hall of Fame on the lakefront (obvious but genuinely good). Or the Cuyahoga Valley National Park exit is right off I-80 eastbound — a quick trail stop on your way out of town.",
+            pushPast:
+              "Erie, PA is 1.5 hours further — lake view motels, cheap, solid diner scene.",
+          },
+        },
+        cincinnati: {
+          name: "Cincinnati",
+          tagline: "Chili-on-spaghetti and riverfront charm",
+          splitMath: "~5.5 hr from STL · ~10 hr to Brooklyn",
+          recommended: false,
+          days: [
+            {
+              title: "St. Louis → Cincinnati",
+              drive: { mi: 350, hr: 5.5 },
+              body: "Easy run east on I-64 through Louisville. Arrive with energy to explore OTR and the riverfront before dinner.",
+              stops: [],
+              overnight: "Cincinnati",
+              wps: ["louisville"],
+            },
+            {
+              title: "Cincinnati → Brooklyn",
+              drive: { mi: 640, hr: 10 },
+              body: "Early start required. I-71 north to Columbus, then I-70 east through Pittsburgh, PA Turnpike, I-78 into Brooklyn. Long Day 2 — leave by 7 AM.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: ["columbus", "pittsburgh"],
+            },
+          ],
+          guide: {
+            classic:
+              "A Cincinnati chili 3-way — chili over spaghetti, smothered in shredded cheddar. Skyline Chili (most popular) or Gold Star are everywhere. Purists insist on Camp Washington Chili (single location, since 1940, diner-style, arguably the best). Add beans or onions for a 4-way or 5-way.",
+            dinner:
+              "Sotto (upscale Italian, downtown, one of the city's best), Salazar in OTR for New American, or Boca for a special-occasion splurge.",
+            coffee:
+              "Deeper Roots Coffee in OTR, or grab pastry and coffee at Findlay Market (the oldest continuously operated public market in Ohio).",
+            walk: "Over-the-Rhine (OTR) — Italianate architecture, converted warehouses, murals everywhere. Anchor around Washington Park. Walk the Roebling Suspension Bridge at golden hour for the skyline shot.",
+            ifTime:
+              "Rhinegeist Brewery rooftop in a former industrial plant, or the National Underground Railroad Freedom Center on the riverfront (heavy but worth it).",
+            pushPast:
+              "Could push to Columbus (2 hr east) if you want dinner in Cincy but a shorter Day 2.",
+          },
+        },
+        columbus: {
+          name: "Columbus",
+          tagline: "The balanced, predictable split",
+          splitMath: "~6 hr from STL · ~8.5 hr to Brooklyn",
+          recommended: false,
+          days: [
+            {
+              title: "St. Louis → Columbus, OH",
+              drive: { mi: 410, hr: 6 },
+              body: "Quick I-70 push across Indiana. North Market or Short North for dinner in Columbus.",
+              stops: [],
+              overnight: "Columbus",
+              wps: ["indianapolis"],
+            },
+            {
+              title: "Columbus → Brooklyn",
+              drive: { mi: 520, hr: 8.5 },
+              body: "Leave early. Pittsburgh → PA Turnpike → NJ → into Brooklyn by late afternoon. Home.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: ["pittsburgh"],
+            },
+          ],
+          guide: {
+            classic:
+              "Schmidt's Sausage Haus in German Village — a 5-generation family restaurant in a historic livery stable. The Bahama Mama sausage is officially one of the foods of Columbus. Don't leave without a half-pound cream puff. Live polka most nights. No reservations.",
+            dinner:
+              "If Schmidt's feels too much, Lindey's (German Village's elegant pick, since 1981), The Guild House in Short North, or Cento for Italian.",
+            coffee:
+              "Fox in the Snow Cafe (Italian Village) — the souffléd egg sandwich was named one of Ohio's must-try breakfasts by Food & Wine. Or Stauf's Coffee Roasters in German Village.",
+            walk: "German Village — brick streets, 1800s architecture, The Book Loft (32 rooms of books), Schiller Park. Or Short North Arts District on High Street, packed with galleries and restaurants.",
+            ifTime:
+              "North Market — the city's best food hall, where Jeni's Splendid Ice Creams got its start. Grab a scoop of Brown Butter Almond Brittle on your way out.",
+            pushPast:
+              "Wheeling, WV or Washington, PA are 2 hours east if you want shorter Day 2 — but Columbus is a real city worth staying in.",
+          },
+        },
+        louisville: {
+          name: "Louisville",
+          tagline: "One last great dinner before the slog",
+          splitMath: "~4.5 hr from STL · ~11 hr to Brooklyn",
+          recommended: false,
+          days: [
+            {
+              title: "St. Louis → Louisville",
+              drive: { mi: 260, hr: 4 },
+              body: "Short hop east on I-64. Arrive with time to explore NuLu or Whiskey Row before a proper dinner.",
+              stops: [],
+              overnight: "Louisville",
+              wps: [],
+            },
+            {
+              title: "Louisville → Brooklyn",
+              drive: { mi: 690, hr: 11 },
+              body: "The long haul. I-71 north to Columbus, I-70 east to Pittsburgh, PA Turnpike, I-78 into Brooklyn. Leave by 6 AM — two drivers strongly recommended.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: ["cincinnati", "columbus", "pittsburgh"],
+            },
+          ],
+          guide: {
+            classic:
+              "A Hot Brown — open-faced turkey sandwich with Mornay sauce, bacon, tomato, broiled until bubbling. Invented at The Brown Hotel in 1926. Eat it at the source — the English Grill at The Brown Hotel. Pair with a bourbon flight at the Brown's Lobby Bar.",
+            dinner:
+              "If you've had the Hot Brown at lunch, do dinner at Proof on Main (farm-to-table, over 100 bourbons) or Jack Fry's (Kentucky institution, since 1933).",
+            coffee:
+              "Heine Brothers' Coffee (local chain, several locations) or Quills Coffee in NuLu.",
+            walk: "NuLu (East Market District) — distilleries, galleries, restaurants, vintage shops. Or Whiskey Row on Main Street — Old Forester, Evan Williams, Angel's Envy, Michter's, all walkable.",
+            ifTime:
+              "A short bourbon distillery tour downtown (Angel's Envy, Evan Williams, or Old Forester are walkable from Whiskey Row). The Louisville Slugger Museum & Factory is better than it sounds.",
+            pushPast:
+              "Cincinnati is 1.5 hours east if you want a Louisville dinner but a head-start on tomorrow. Or Lexington, KY is 1 hour east if you want horse country.",
+          },
+        },
+        bookit: {
+          name: "Book it",
+          tagline: "One day. Two drivers. Home by midnight.",
+          splitMath: "950 mi · ~15 hr straight",
+          recommended: false,
+          days: [
+            {
+              title: "St. Louis → Brooklyn (push)",
+              drive: { mi: 950, hr: 15 },
+              body: "Two drivers swapping every 2–3 hr. Leave by 6 AM. I-70 → I-76 → I-78. Arrive exhausted but home. Only attempt with a rested buffer day afterward.",
+              stops: [],
+              overnight: "Brooklyn",
+              wps: ["indianapolis", "columbus", "pittsburgh"],
+            },
+          ],
+          guide: null,
+        },
+      };
 
       /* ============================================================
    PARK REGIONS — display grouping (routing uses longitude order)
@@ -2554,7 +2932,11 @@
           );
           seq.push({ id: "st-louis", kind: "family" });
           const postSeg =
-            postStlMode === "bookit" ? POST_STL_BOOKIT : POST_STL_COLUMBUS;
+            POST_STL_CITIES[postStlMode]?.days ??
+            POST_STL_CITIES.pittsburgh.days;
+          if (postStlMode !== "bookit") {
+            seq.push({ id: postStlMode, kind: "waypoint" });
+          }
           postSeg.forEach((d) =>
             (d.wps || []).forEach((wp) =>
               seq.push({ id: wp, kind: "waypoint" }),
@@ -4109,6 +4491,58 @@
       }
 
       /* ============================================================
+   CITY GUIDE COMPONENT
+   ============================================================ */
+      function CityGuide({ cityId }) {
+        const city = POST_STL_CITIES[cityId];
+        if (!city || !city.guide) return null;
+        const g = city.guide;
+        return (
+          <div className="city-guide fade-in">
+            <div className="city-guide-header">
+              <div className="city-guide-name">{city.name}</div>
+              <div className="city-guide-tagline">{city.tagline}</div>
+              <div className="city-guide-math">{city.splitMath}</div>
+            </div>
+            <div className="city-guide-grid">
+              <div className="city-guide-section">
+                <div className="city-guide-label">The Classic</div>
+                <div className="city-guide-text">{g.classic}</div>
+              </div>
+              <div className="city-guide-section">
+                <div className="city-guide-label">Dinner</div>
+                <div className="city-guide-text">{g.dinner}</div>
+              </div>
+              <div className="city-guide-section">
+                <div className="city-guide-label">Morning Coffee</div>
+                <div className="city-guide-text">{g.coffee}</div>
+              </div>
+              <div className="city-guide-section">
+                <div className="city-guide-label">Walk This District</div>
+                <div className="city-guide-text">{g.walk}</div>
+              </div>
+              <div className="city-guide-section">
+                <div className="city-guide-label">If You Have Time</div>
+                <div className="city-guide-text">{g.ifTime}</div>
+              </div>
+              <div className="city-guide-section city-guide-push">
+                <span
+                  style={{
+                    fontStyle: "normal",
+                    fontWeight: 600,
+                    color: "var(--ink-muted)",
+                  }}
+                >
+                  Push past:{" "}
+                </span>
+                {g.pushPast}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
    APP
    ============================================================ */
       function App() {
@@ -4116,7 +4550,7 @@
           new Set(["grand-canyon-s", "sedona", "santa-fe"]),
         );
         const [headStart, setHeadStart] = useState(false);
-        const [postStlMode, setPostStlMode] = useState("columbus");
+        const [postStlMode, setPostStlMode] = useState("pittsburgh");
         const [parkNights, setParkNights] = useState(new Map());
         const [dallasDays, setDallasDays] = useState(2);
         const [stlDays, setStlDays] = useState(2);
@@ -4193,14 +4627,10 @@
         }
 
         const totalMiles = itinerary.totalMiles + 630 + 950;
-        const totalDays =
-          itinerary.daysNeeded +
-          dallasDays +
-          1 +
-          stlDays +
-          (postStlMode === "columbus" ? 2 : 1);
         const postSeg =
-          postStlMode === "columbus" ? POST_STL_COLUMBUS : POST_STL_BOOKIT;
+          POST_STL_CITIES[postStlMode]?.days ?? POST_STL_CITIES.pittsburgh.days;
+        const totalDays =
+          itinerary.daysNeeded + dallasDays + 1 + stlDays + postSeg.length;
 
         // Build dynamic Dallas/STL day arrays
         const dallasDayCards = Array.from({ length: dallasDays }, (_, i) =>
@@ -4490,27 +4920,26 @@
                   </div>
                   <div className="segment-divider-line" />
                 </div>
-                <div className="toggle-group" role="tablist">
-                  <button
-                    className="toggle-opt"
-                    data-active={postStlMode === "columbus"}
-                    onClick={() => setPostStlMode("columbus")}
-                  >
-                    Split · Columbus overnight
-                  </button>
-                  <button
-                    className="toggle-opt"
-                    data-active={postStlMode === "bookit"}
-                    onClick={() => setPostStlMode("bookit")}
-                  >
-                    Book it · one push
-                  </button>
+                <div className="city-card-grid">
+                  {Object.entries(POST_STL_CITIES).map(([id, city]) => (
+                    <button
+                      key={id}
+                      className="city-card"
+                      data-selected={postStlMode === id}
+                      onClick={() => setPostStlMode(id)}
+                    >
+                      <div className="city-card-name">
+                        {city.name}
+                        {city.recommended && (
+                          <span className="city-flag">Recommended</span>
+                        )}
+                      </div>
+                      <div className="city-card-tagline">{city.tagline}</div>
+                      <div className="city-card-stats">{city.splitMath}</div>
+                    </button>
+                  ))}
                 </div>
-                <p className="section-desc" style={{ marginTop: "6px" }}>
-                  {postStlMode === "columbus"
-                    ? "Two days: 6 hr to Columbus, then 8.5 hr into Brooklyn."
-                    : "~15 hr straight. Two drivers, leave 6 AM."}
-                </p>
+                {postStlMode !== "bookit" && <CityGuide cityId={postStlMode} />}
                 <div className="fade-in" key={postStlMode}>
                   {postSeg.map((d, i) => (
                     <DayCard
