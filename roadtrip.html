@@ -2651,6 +2651,69 @@
         { id: "bryce-coral", parks: ["bryce", "coral-pink"] },
       ];
 
+      /* ============================================================
+   STOP TYPE MODEL — feature-flagged (Fix 3)
+   ============================================================ */
+      // Master switch. When false, app behaves as if everything is an overnight
+      // (current behavior). When true, pass-through stops add hours to the
+      // enclosing drive day but do not consume a night.
+      const ENABLE_STOP_TYPES = false;
+
+      // Default stop type per park id. Destination-scale parks are overnights;
+      // quick-visit stops are pass-throughs. Anything not listed falls back
+      // to "overnight" via getStopType().
+      const PARK_STOP_TYPES = {
+        "grand-canyon-s": "overnight",
+        zion: "overnight",
+        bryce: "overnight",
+        sedona: "overnight",
+        "santa-fe": "overnight",
+        taos: "overnight",
+        moab: "overnight",
+        durango: "overnight",
+        "joshua-tree": "overnight",
+        "mesa-verde": "overnight",
+        "great-sand-dunes": "overnight",
+        arches: "overnight",
+        canyonlands: "overnight",
+        "horseshoe-bend": "pass-through",
+        "antelope-lower": "pass-through",
+        "monument-valley": "pass-through",
+        "petrified-forest": "pass-through",
+        "valley-of-fire": "pass-through",
+        "coral-pink": "pass-through",
+        "white-sands": "pass-through",
+        carlsbad: "pass-through",
+      };
+
+      // Drive-day hour contribution for pass-through stops (added to that
+      // day's total, not its own overnight). Only consulted when
+      // ENABLE_STOP_TYPES is true.
+      const PARK_PASS_THROUGH_HOURS = {
+        "horseshoe-bend": 1,
+        "antelope-lower": 2,
+        "monument-valley": 2.5,
+        "petrified-forest": 2,
+        "valley-of-fire": 2,
+        "coral-pink": 0.5,
+        "white-sands": 2,
+        carlsbad: 3,
+      };
+
+      // Helpers — always respect the flag. When flag is off, every park is
+      // treated as an overnight and pass-through hours are ignored.
+      function getStopType(id) {
+        if (!ENABLE_STOP_TYPES) return "overnight";
+        return PARK_STOP_TYPES[id] || "overnight";
+      }
+      function getPassThroughHours(id) {
+        if (!ENABLE_STOP_TYPES) return 0;
+        return PARK_PASS_THROUGH_HOURS[id] || 0;
+      }
+      function isPassThrough(id) {
+        return getStopType(id) === "pass-through";
+      }
+
       function sharesCluster(a, b) {
         if (!a || !b) return false;
         if (a === b) return true;
