@@ -1,0 +1,4558 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Newport Beach → Brooklyn · May 2026</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=Work+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+      :root {
+        --cream: #f3eadb;
+        --cream-soft: #f8f0e1;
+        --cream-deep: #eadfc9;
+        --ink: #1c1b17;
+        --ink-soft: #3e3a32;
+        --ink-muted: #6b6556;
+        --terracotta: #b84a2e;
+        --terracotta-d: #8c3520;
+        --sage: #6b7a53;
+        --sage-d: #4e5a3a;
+        --sand: #d4c4a0;
+        --dust: #e2d5b8;
+        --rule: #d8c9ad;
+        --hairline: rgba(28, 27, 23, 0.1);
+
+        --shadow-sm: 0 1px 2px rgba(28, 27, 23, 0.06);
+        --shadow-md: 0 6px 18px rgba(28, 27, 23, 0.08);
+        --shadow-lg: 0 18px 42px rgba(28, 27, 23, 0.14);
+
+        --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+        --font-body:
+          "Work Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: var(--cream);
+        color: var(--ink);
+        line-height: 1.5;
+        font-size: 15px;
+        font-weight: 400;
+        overflow: hidden;
+      }
+
+      /* subtle paper grain */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        opacity: 0.18;
+        mix-blend-mode: multiply;
+      }
+
+      /* --- Layout --- */
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr;
+        grid-template-areas:
+          "header header"
+          "map    content";
+        gap: 0;
+      }
+
+      .header {
+        grid-area: header;
+        padding: 18px 32px;
+        background: var(--cream-soft);
+        border-bottom: 1px solid var(--hairline);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        z-index: 5;
+      }
+      .header-title {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        font-variation-settings: "opsz" 100;
+      }
+      .header-title em {
+        font-style: italic;
+        font-weight: 400;
+        color: var(--terracotta);
+      }
+      .header-sub {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--ink-muted);
+        font-weight: 500;
+        margin-top: 4px;
+      }
+      .header-meta {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-muted);
+        text-align: right;
+        line-height: 1.6;
+      }
+      .header-meta strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .map-panel {
+        grid-area: map;
+        position: relative;
+        z-index: 1;
+        background: #d9d0bd;
+        border-right: 1px solid var(--hairline);
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+        background: #d9d0bd;
+      }
+
+      .content-panel {
+        grid-area: content;
+        overflow-y: auto;
+        background: var(--cream);
+        scroll-behavior: smooth;
+        padding-bottom: 110px;
+      }
+      .content-panel::-webkit-scrollbar {
+        width: 10px;
+      }
+      .content-panel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .content-panel::-webkit-scrollbar-thumb {
+        background: var(--sand);
+        border-radius: 5px;
+        border: 2px solid var(--cream);
+      }
+      .content-panel::-webkit-scrollbar-thumb:hover {
+        background: var(--sand-dark);
+      }
+
+      .content-inner {
+        padding: 28px 32px 120px;
+        max-width: 760px;
+      }
+
+      /* --- Section labels --- */
+      .eyebrow {
+        font-family: var(--font-body);
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .eyebrow::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--rule);
+      }
+      .section-title {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin-bottom: 6px;
+      }
+      .section-desc {
+        font-size: 14px;
+        color: var(--ink-muted);
+        margin-bottom: 20px;
+        max-width: 60ch;
+      }
+
+      /* --- Variant grid --- */
+      .variant-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 32px;
+      }
+      .variant-card {
+        position: relative;
+        background: var(--cream-soft);
+        border: 1.5px solid var(--hairline);
+        border-radius: 3px;
+        padding: 14px 14px 12px;
+        cursor: pointer;
+        text-align: left;
+        font-family: inherit;
+        color: inherit;
+        transition: all 0.18s ease;
+        overflow: hidden;
+      }
+      .variant-card:hover {
+        border-color: var(--sand-dark);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+      }
+      .variant-card[data-selected="true"] {
+        background: var(--ink);
+        color: var(--cream);
+        border-color: var(--ink);
+        box-shadow: var(--shadow-md);
+      }
+      .variant-card .accent-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+      }
+      .variant-card-name {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.15;
+        margin-bottom: 2px;
+      }
+      .variant-card-tagline {
+        font-size: 12px;
+        color: var(--ink-muted);
+        line-height: 1.35;
+        margin-bottom: 10px;
+        font-weight: 400;
+      }
+      .variant-card[data-selected="true"] .variant-card-tagline {
+        color: var(--cream-deep);
+      }
+      .variant-card-stats {
+        display: flex;
+        gap: 10px;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--ink-soft);
+        border-top: 1px solid var(--hairline);
+        padding-top: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .variant-card[data-selected="true"] .variant-card-stats {
+        color: var(--cream-deep);
+        border-color: rgba(243, 234, 219, 0.2);
+      }
+      .variant-card-stats span strong {
+        font-weight: 600;
+        color: var(--ink);
+        font-family: var(--font-display);
+        font-size: 13px;
+      }
+      .variant-card[data-selected="true"] .variant-card-stats span strong {
+        color: var(--cream);
+      }
+      .variant-flag {
+        display: inline-block;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 2px;
+        background: var(--terracotta);
+        color: var(--cream);
+        font-weight: 600;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+
+      /* --- Variant summary hero --- */
+      .summary-hero {
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 22px 24px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+      .summary-hero::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--variant-color, var(--terracotta));
+      }
+      .summary-hero-title {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 26px;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin-bottom: 4px;
+      }
+      .summary-hero-tagline {
+        font-size: 13px;
+        color: var(--ink-muted);
+        margin-bottom: 16px;
+        font-style: italic;
+        font-family: var(--font-display);
+      }
+      .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--hairline);
+      }
+      .stat {
+        font-family: var(--font-display);
+      }
+      .stat-label {
+        font-family: var(--font-body);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 500;
+        margin-bottom: 2px;
+      }
+      .stat-value {
+        font-weight: 600;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat-unit {
+        font-size: 12px;
+        color: var(--ink-muted);
+        font-weight: 400;
+        margin-left: 2px;
+        font-family: var(--font-body);
+      }
+      .summary-note {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        padding: 10px 12px;
+        background: var(--cream-deep);
+        border-radius: 3px;
+        border-left: 3px solid var(--variant-color, var(--terracotta));
+      }
+      .summary-note strong {
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      /* --- Day cards --- */
+      .day-card {
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 20px 22px;
+        margin-bottom: 14px;
+        scroll-margin-top: 20px;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      .day-card.highlight {
+        border-color: var(--variant-color, var(--terracotta));
+        box-shadow: 0 0 0 3px
+          color-mix(
+            in srgb,
+            var(--variant-color, var(--terracotta)) 15%,
+            transparent
+          );
+      }
+      .day-card.mandatory {
+        background: var(--cream-deep);
+        border-style: dashed;
+      }
+      .day-header {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        margin-bottom: 8px;
+      }
+      .day-num {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 34px;
+        line-height: 0.9;
+        letter-spacing: -0.03em;
+        color: var(--variant-color, var(--terracotta));
+        font-variant-numeric: tabular-nums;
+      }
+      .day-num-sub {
+        font-family: var(--font-body);
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        display: block;
+        margin-top: 2px;
+        letter-spacing: 0.14em;
+      }
+      .day-meta {
+        flex: 1;
+      }
+      .day-date {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      .day-title {
+        font-family: var(--font-display);
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        line-height: 1.2;
+      }
+      .day-drive {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--ink-muted);
+        padding: 3px 9px;
+        background: var(--cream-deep);
+        border-radius: 2px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .day-drive svg {
+        width: 12px;
+        height: 12px;
+        opacity: 0.7;
+      }
+      .day-body {
+        margin-top: 12px;
+        font-size: 14px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+      }
+      .day-body p {
+        margin-bottom: 8px;
+      }
+      .day-overnight {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--ink-muted);
+        font-weight: 500;
+      }
+      .day-overnight::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sage);
+      }
+
+      /* --- Stop chip list in day --- */
+      .day-stops {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 0 4px;
+      }
+      .stop-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px 4px 6px;
+        background: var(--cream);
+        border: 1px solid var(--rule);
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--ink-soft);
+        transition: all 0.15s;
+        font-family: inherit;
+      }
+      .stop-chip:hover {
+        border-color: var(--variant-color, var(--terracotta));
+        color: var(--ink);
+      }
+      .stop-chip-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--variant-color, var(--terracotta));
+        color: var(--cream);
+        font-size: 9px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* --- Park cards --- */
+      .park-card {
+        margin-top: 14px;
+        background: var(--cream);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+      }
+      .park-card.highlight {
+        box-shadow: 0 0 0 2px var(--variant-color, var(--terracotta));
+      }
+      .park-hero {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 7;
+        background: var(--sand);
+        overflow: hidden;
+      }
+      .park-hero-bg,
+      .park-hero-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .park-hero-photo {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        filter: saturate(0.95) contrast(1.02);
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+      .park-hero-photo.loaded {
+        opacity: 1;
+      }
+      .park-hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        filter: saturate(0.92);
+      }
+      .park-hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to bottom,
+          transparent 40%,
+          rgba(28, 27, 23, 0.55)
+        );
+        display: flex;
+        align-items: flex-end;
+        padding: 14px 16px;
+      }
+      .park-hero-name {
+        font-family: var(--font-display);
+        color: var(--cream);
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        line-height: 1.1;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+      .park-hero-marker {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: var(--variant-color, var(--terracotta));
+        color: var(--cream);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-variant-numeric: tabular-nums;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+        border: 2px solid var(--cream);
+      }
+      .park-body {
+        padding: 14px 16px 16px;
+      }
+      .park-overview {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin-bottom: 10px;
+      }
+      .park-detail-row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 13px;
+        border-top: 1px solid var(--hairline);
+      }
+      .park-detail-row:first-of-type {
+        border-top: none;
+        padding-top: 8px;
+      }
+      .park-detail-label {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        padding-top: 2px;
+      }
+      .park-detail-value {
+        color: var(--ink-soft);
+        line-height: 1.45;
+      }
+      .park-detail-value strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .park-detail-value a {
+        color: var(--terracotta);
+        text-decoration: none;
+        border-bottom: 1px solid
+          color-mix(in srgb, var(--terracotta) 30%, transparent);
+        transition: border-color 0.15s;
+      }
+      .park-detail-value a:hover {
+        border-color: var(--terracotta);
+      }
+
+      .park-flag {
+        display: inline-block;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        background: var(--cream-deep);
+        color: var(--ink-soft);
+        border-radius: 2px;
+        font-weight: 600;
+        margin-right: 5px;
+      }
+      .park-flag.warn {
+        background: #f4e4c1;
+        color: #7a5820;
+      }
+
+      /* --- Post section (shared Dallas->Brooklyn) --- */
+      .segment-divider {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: 30px 0 18px;
+      }
+      .segment-divider-line {
+        flex: 1;
+        height: 1px;
+        background: var(--rule);
+      }
+      .segment-divider-label {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: 14px;
+        color: var(--ink-muted);
+        font-weight: 400;
+      }
+
+      /* post-STL toggle */
+      .toggle-group {
+        display: inline-flex;
+        background: var(--cream-deep);
+        border-radius: 3px;
+        padding: 3px;
+        margin-bottom: 10px;
+        border: 1px solid var(--hairline);
+      }
+      .toggle-opt {
+        padding: 6px 12px;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-weight: 600;
+        background: transparent;
+        border: none;
+        border-radius: 2px;
+        cursor: pointer;
+        color: var(--ink-muted);
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .toggle-opt[data-active="true"] {
+        background: var(--ink);
+        color: var(--cream);
+      }
+
+      /* --- Leaflet custom --- */
+      .leaflet-container {
+        font-family: var(--font-body);
+        background: #d9d0bd !important;
+      }
+      .leaflet-tile-pane {
+        filter: saturate(0.85) contrast(0.95);
+      }
+
+      .marker-pin {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 2.5px solid var(--cream);
+        background: var(--terracotta);
+        color: var(--cream);
+        font-weight: 700;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+        font-family: var(--font-body);
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+        transition: transform 0.15s;
+      }
+      .marker-pin:hover {
+        transform: scale(1.15);
+      }
+      .marker-pin.endpoint {
+        background: var(--ink);
+        border-radius: 3px;
+        width: 36px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        height: 22px;
+      }
+      .marker-pin.family {
+        background: var(--sage);
+        border-radius: 4px;
+        width: 30px;
+        height: 30px;
+      }
+      .marker-pin.overnight {
+        width: 12px;
+        height: 12px;
+        border-width: 2px;
+        background: var(--cream);
+      }
+      .marker-pin.overnight::after {
+        content: "";
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--variant-color, var(--terracotta));
+      }
+      .leaflet-popup-content-wrapper {
+        border-radius: 3px;
+        background: var(--cream-soft);
+        box-shadow: var(--shadow-md);
+      }
+      .leaflet-popup-content {
+        font-family: var(--font-body);
+        font-size: 13px;
+        color: var(--ink);
+        margin: 10px 12px;
+        line-height: 1.4;
+      }
+      .leaflet-popup-content strong {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 14px;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .leaflet-popup-tip {
+        background: var(--cream-soft);
+      }
+
+      /* Map legend */
+      .map-legend {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 10px 12px;
+        font-size: 11px;
+        box-shadow: var(--shadow-md);
+        z-index: 500;
+        max-width: 230px;
+      }
+      .map-legend-title {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: -0.01em;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .map-legend-title::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        background: var(--variant-color, var(--terracotta));
+        border-radius: 50%;
+      }
+      .map-legend-stats {
+        font-size: 11px;
+        color: var(--ink-muted);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+
+      .map-tip {
+        position: absolute;
+        bottom: 14px;
+        left: 14px;
+        background: rgba(28, 27, 23, 0.82);
+        color: var(--cream);
+        padding: 7px 11px;
+        border-radius: 2px;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        z-index: 500;
+        max-width: 260px;
+        line-height: 1.4;
+        backdrop-filter: blur(6px);
+      }
+
+      /* --- Park Picker --- */
+      .park-picker {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+      }
+      .picker-region {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .picker-region-label {
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--ink-muted);
+      }
+      .picker-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .park-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        background: var(--cream);
+        border: 1.5px solid var(--rule);
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ink-soft);
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.14s;
+      }
+      .park-pill:hover {
+        border-color: var(--terracotta);
+        color: var(--ink);
+      }
+      .park-pill.on {
+        background: var(--terracotta);
+        border-color: var(--terracotta);
+        color: var(--cream);
+      }
+      .park-pill.cluster {
+        border-color: #3a8f93;
+      }
+      .park-pill.cluster:hover {
+        border-color: #2d7377;
+      }
+      .park-pill.cluster.on {
+        /* inline style from PARK_COLOR takes over when selected */
+      }
+      .cluster-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0 10px;
+        font-size: 11px;
+        color: var(--ink-muted, #8a8a8a);
+      }
+      .cluster-legend-swatch {
+        display: inline-block;
+        width: 14px;
+        height: 10px;
+        border: 1.5px solid #3a8f93;
+        border-radius: 100px;
+        background: var(--cream);
+      }
+      .pill-check {
+        font-size: 10px;
+        opacity: 0.85;
+      }
+      .park-pill-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .pill-nights-ctrl {
+        display: inline-flex;
+        align-items: center;
+        gap: 1px;
+        background: var(--cream-soft);
+        border: 1.5px solid var(--rule);
+        border-radius: 100px;
+        padding: 2px 4px;
+        font-size: 11px;
+      }
+      .nights-adj {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        padding: 0 3px;
+        color: var(--ink-soft);
+        font-family: inherit;
+        border-radius: 100px;
+        transition: color 0.1s;
+      }
+      .nights-adj:hover:not(:disabled) {
+        color: var(--terracotta);
+      }
+      .nights-adj:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
+      .nights-count {
+        min-width: 26px;
+        text-align: center;
+        font-size: 11px;
+        color: var(--ink-soft);
+        font-weight: 500;
+      }
+
+      /* --- Day Timeline --- */
+      .day-timeline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        width: 100%;
+        margin: 16px 0 4px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      .day-timeline::-webkit-scrollbar {
+        display: none;
+      }
+      .tl-slot {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        min-width: 56px;
+      }
+      .tl-bubble {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1.5px solid var(--hairline);
+        background: var(--cream);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--ink-muted, #aaa);
+        font-weight: 400;
+        transition: all 0.18s;
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
+      }
+      .tl-bubble.filled {
+        background: var(--terracotta);
+        border-color: var(--terracotta);
+        color: #fff;
+        font-weight: 600;
+        width: auto;
+        min-width: 34px;
+        border-radius: 100px;
+        padding: 0 8px;
+        font-size: 10px;
+        white-space: nowrap;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tl-bubble.extra-night {
+        background: #8b5e3c;
+        border-color: #8b5e3c;
+      }
+      .tl-bubble.drive-day {
+        background: var(--ink-soft, #888);
+        border-color: var(--ink-soft, #888);
+        font-size: 9px;
+      }
+      .tl-bubble.fixed {
+        background: var(--cream-deep);
+        border-color: var(--rule);
+        color: var(--ink-soft);
+        font-size: 9px;
+        font-weight: 500;
+        width: auto;
+        min-width: 34px;
+        border-radius: 100px;
+        padding: 0 8px;
+        white-space: nowrap;
+      }
+      .tl-label {
+        font-size: 9px;
+        color: var(--ink-muted, #bbb);
+        text-align: center;
+        white-space: nowrap;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tl-arrow {
+        color: var(--ink-soft);
+        font-size: 14px;
+        font-weight: 500;
+        flex: 0 0 auto;
+        padding: 0 16px;
+        margin-bottom: 16px;
+        line-height: 34px;
+      }
+      .tl-dash {
+        flex: 0 0 4px;
+        height: 34px;
+        margin: 0 0 16px;
+        position: relative;
+        z-index: 0;
+      }
+      .tl-dash::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: -14px;
+        right: -14px;
+        height: 2px;
+        background: var(--ink-soft);
+        transform: translateY(-50%);
+        z-index: 0;
+      }
+      .tl-slot.cont {
+        min-width: auto;
+      }
+      .tl-bubble.endpoint {
+        background: var(--ink-soft, #6b6b6b);
+        border-color: var(--ink-soft, #6b6b6b);
+        color: #fff;
+        font-weight: 600;
+        width: auto;
+        min-width: 44px;
+        border-radius: 4px;
+        padding: 0 10px;
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      /* --- Fixed Timeline Bar (bottom, full-width) --- */
+      .timeline-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        background: var(--cream-soft);
+        border-top: 1px solid var(--hairline);
+        padding: 8px 20px 10px;
+        min-height: 56px;
+      }
+      .timeline-bar .day-timeline {
+        margin: 0;
+        padding-bottom: 0;
+      }
+
+      /* --- Fixed Park Bar (bottom) --- */
+      .park-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: var(--cream-soft);
+        border-top: 1px solid var(--hairline);
+        padding: 10px 20px 12px;
+        display: flex;
+        align-items: flex-start;
+        gap: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .park-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .bar-region {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex-shrink: 0;
+        padding-right: 16px;
+        border-right: 1px solid var(--hairline);
+        margin-right: 16px;
+      }
+      .bar-region:last-child {
+        border-right: none;
+        margin-right: 0;
+        padding-right: 0;
+      }
+      .bar-region-label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        white-space: nowrap;
+      }
+      .bar-pills {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 4px;
+        align-items: center;
+      }
+
+      /* --- City days +/- control --- */
+      .city-days-ctrl {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--cream);
+        border: 1px solid var(--rule);
+        border-radius: 100px;
+        padding: 2px 6px;
+        margin-left: 8px;
+      }
+      .city-days-btn {
+        background: none;
+        border: none;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+        color: var(--ink-soft);
+        cursor: pointer;
+        font-family: inherit;
+        transition: color 0.1s;
+      }
+      .city-days-btn:hover:not(:disabled) {
+        color: var(--terracotta);
+      }
+      .city-days-btn:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
+      .city-days-val {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink);
+        min-width: 14px;
+        text-align: center;
+      }
+      .segment-divider-label-row {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        white-space: nowrap;
+      }
+      .city-days-card {
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 10px 14px;
+        margin: 6px 0 4px;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .city-days-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .city-days-row .city-days-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-right: 4px;
+      }
+      .city-days-card .city-days-ctrl {
+        margin-left: 0;
+      }
+
+      /* --- Trip Meter --- */
+      .trip-meter {
+        background: var(--cream-soft);
+        border: 1px solid var(--hairline);
+        border-radius: 3px;
+        padding: 14px 16px;
+        margin-bottom: 4px;
+        transition: border-color 0.2s;
+      }
+      .trip-meter.over-limit {
+        border-color: var(--terracotta);
+      }
+      .meter-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+        gap: 12px;
+      }
+      .meter-days {
+        font-size: 14px;
+        color: var(--ink-soft);
+      }
+      .meter-val {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .meter-of {
+        font-size: 13px;
+        color: var(--ink-muted);
+      }
+      .meter-stats {
+        font-size: 11px;
+        color: var(--ink-muted);
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .meter-bar-track {
+        height: 6px;
+        background: var(--cream-deep);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .meter-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition:
+          width 0.3s ease,
+          background 0.3s;
+      }
+      .meter-warning {
+        font-size: 12px;
+        color: var(--terracotta-d, #8c3520);
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+      .meter-headstart {
+        margin-top: 6px;
+      }
+      .headstart-btn {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-weight: 600;
+        background: transparent;
+        border: 1.5px solid var(--rule);
+        border-radius: 2px;
+        padding: 5px 10px;
+        cursor: pointer;
+        color: var(--ink-muted);
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .headstart-btn:hover {
+        border-color: var(--sage);
+        color: var(--sage-d);
+      }
+      .headstart-btn.active {
+        background: var(--sage);
+        border-color: var(--sage);
+        color: var(--cream);
+      }
+
+      /* --- Drive-warn day card --- */
+      .day-card.drive-warn {
+        border-color: var(--terracotta);
+      }
+      .day-drive-warn {
+        color: var(--terracotta) !important;
+      }
+      .day-drive-note {
+        font-size: 11px;
+        font-style: italic;
+        color: var(--terracotta);
+        margin-top: 6px;
+        padding: 0 16px 10px;
+      }
+
+      /* --- Empty state --- */
+      .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--ink-muted);
+        font-size: 14px;
+        border: 1px dashed var(--rule);
+        border-radius: 3px;
+        margin: 16px 0;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 1px solid var(--rule);
+        font-size: 11px;
+        color: var(--ink-muted);
+        letter-spacing: 0.04em;
+        line-height: 1.6;
+      }
+      .footer strong {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
+
+      /* --- Camping section --- */
+      .park-camping {
+        margin-top: 14px;
+        padding: 12px 14px 14px;
+        background: var(--cream-deep);
+        border-radius: 3px;
+        border-left: 3px solid var(--sage);
+        position: relative;
+      }
+      .park-camping[data-difficulty="hard"] {
+        border-left-color: #b84a2e;
+      }
+      .park-camping[data-difficulty="moderate"] {
+        border-left-color: #c98a3b;
+      }
+      .park-camping[data-difficulty="easy"] {
+        border-left-color: var(--sage);
+      }
+      .park-camping-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .park-camping-icon {
+        display: inline-flex;
+        width: 22px;
+        height: 22px;
+        color: var(--ink-soft);
+      }
+      .park-camping-icon svg {
+        width: 100%;
+        height: 100%;
+      }
+      .park-camping-label {
+        font-family: var(--font-body);
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        line-height: 1;
+        margin-bottom: 3px;
+      }
+      .park-camping-difficulty {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+        line-height: 1.1;
+        font-style: italic;
+      }
+      .park-camping[data-difficulty="hard"] .park-camping-difficulty {
+        color: #8c3520;
+      }
+      .park-camping[data-difficulty="moderate"] .park-camping-difficulty {
+        color: #8a5a1e;
+      }
+      .park-camping[data-difficulty="easy"] .park-camping-difficulty {
+        color: var(--sage-d);
+      }
+      .park-camping-body {
+        display: grid;
+        gap: 7px;
+      }
+      .camping-row {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 10px;
+        font-size: 12.5px;
+        line-height: 1.5;
+      }
+      .camping-row-label {
+        font-size: 9.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-muted);
+        font-weight: 600;
+        padding-top: 2px;
+      }
+      .camping-row-value {
+        color: var(--ink-soft);
+      }
+      .camping-warn {
+        color: #7a3520;
+      }
+      .camping-tip {
+        margin-top: 6px;
+        padding: 8px 10px;
+        background: rgba(107, 122, 83, 0.12);
+        border-radius: 2px;
+        font-size: 12.5px;
+        font-style: italic;
+        color: var(--ink-soft);
+        font-family: var(--font-display);
+        line-height: 1.45;
+        border-left: 2px solid var(--sage);
+      }
+
+      /* ─── Print --- */
+      @media print {
+        .app {
+          display: block;
+          height: auto;
+        }
+        .map-panel {
+          height: 300px;
+          page-break-after: always;
+        }
+        .content-panel {
+          overflow: visible;
+        }
+      }
+
+      /* --- Responsive --- */
+      @media (max-width: 980px) {
+        body {
+          overflow: auto;
+        }
+        .app {
+          height: auto;
+          grid-template-columns: 1fr;
+          grid-template-areas: "header" "map" "content";
+        }
+        .map-panel {
+          height: 60vh;
+          min-height: 400px;
+        }
+        .content-panel {
+          overflow: visible;
+        }
+        .variant-grid {
+          grid-template-columns: 1fr;
+        }
+        .summary-stats {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      /* Fade animation for variant switch */
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeUp 0.28s ease both;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+      const { useState, useEffect, useRef, useMemo } = React;
+
+      /* ============================================================
+   LOCATIONS — parks, cities, waypoints
+   ============================================================ */
+      const L_PLACES = {
+        // Endpoints
+        "newport-beach": {
+          name: "Newport Beach, CA",
+          lat: 33.6189,
+          lng: -117.9298,
+          type: "endpoint",
+        },
+        brooklyn: {
+          name: "Brooklyn, NY",
+          lat: 40.6782,
+          lng: -73.9442,
+          type: "endpoint",
+        },
+
+        // Mandatory family stops
+        dallas: {
+          name: "Dallas, TX",
+          lat: 32.7767,
+          lng: -96.797,
+          type: "family",
+          nights: 2,
+          blurb:
+            "Family + Claire's brother. 2 nights. Pecan Lodge, Bishop Arts, Sixth Floor Museum.",
+        },
+        "st-louis": {
+          name: "St. Louis, MO",
+          lat: 38.627,
+          lng: -90.1994,
+          type: "family",
+          nights: 2,
+          blurb:
+            "Claire's parents. 2 nights. Gateway Arch, Forest Park, City Museum, toasted ravioli on The Hill.",
+        },
+
+        // PARKS — with detailed info
+        "grand-canyon-s": {
+          name: "Grand Canyon (South Rim)",
+          lat: 36.0544,
+          lng: -112.1401,
+          type: "park",
+          wiki: "Grand_Canyon_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/a/aa/Dawn_on_the_S_rim_of_the_Grand_Canyon_%288645178272%29.jpg",
+          overview:
+            "A mile deep, 10 miles wide, 277 miles long. The South Rim is the year-round, fully-serviced side — multiple viewpoints, the Rim Trail, and the classic Bright Angel descent.",
+          mustDo:
+            "Sunrise at Mather Point → Rim Trail to Yavapai Geology Museum (1.5 mi). For more: Bright Angel down to Ooh Aah Point (3 mi RT, 2.5 hr).",
+          time: "Half to full day",
+          fee: "$35/vehicle · AtB pass covers",
+          nps: "https://www.nps.gov/grca",
+          may: "Rim highs 65–75°F (7,000 ft). Moderate pre-summer crowds. No reservations needed.",
+          visitHours: 6,
+        },
+        sedona: {
+          name: "Sedona, AZ",
+          lat: 34.8697,
+          lng: -111.761,
+          type: "park",
+          wiki: "Sedona,_Arizona",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/b/b0/Cathedral_Rock_-_Sedona_AZ-1.jpg",
+          overview:
+            "Red-rock basin at 4,500 ft, vortex lore and art galleries optional. Short hikes punch well above their weight — Cathedral Rock is one of the Southwest's signature silhouettes.",
+          mustDo:
+            "Cathedral Rock Trail (1.2 mi RT, scramble up top) at sunset. Or Devil's Bridge (3.9 mi RT) for the sandstone arch shot.",
+          time: "Half day + overnight",
+          fee: "Red Rock Pass $5/day · AtB substitutes",
+          nps: "https://www.visitsedona.com",
+          may: "Highs 75–85°F, ideal hiking. Cathedral & Soldier Pass trailheads CLOSED Thu–Sun — use free Sedona Shuttle.",
+          visitHours: 5,
+        },
+        zion: {
+          name: "Zion National Park",
+          lat: 37.2982,
+          lng: -113.0263,
+          type: "park",
+          wiki: "Zion_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/1/10/Zion_angels_landing_view.jpg",
+          overview:
+            "Sheer 2,000-ft sandstone walls enclosing the Virgin River. Access via mandatory shuttle in main canyon — private cars banned.",
+          mustDo:
+            "Angels Landing (5 mi, permit via lottery) or Observation Point via East Mesa (7 mi, no permit, arguably better view). The Narrows bottom-up if flow allows.",
+          time: "1–2 days",
+          fee: "$35/vehicle · AtB covers",
+          nps: "https://www.nps.gov/zion",
+          may: "Highs 75–85°F. Shuttle runs 7 AM–7:15 PM. Narrows water is ~50°F — high snowmelt flow can close it. Angels Landing permit required.",
+          visitHours: 8,
+        },
+        bryce: {
+          name: "Bryce Canyon",
+          lat: 37.6283,
+          lng: -112.1676,
+          type: "park",
+          wiki: "Bryce_Canyon_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/c/c3/Inspiration_Point_Bryce_Canyon_November_2018_panorama.jpg",
+          overview:
+            "A natural amphitheater packed with orange hoodoos — the densest concentration of these spires anywhere. Sits at 8,000–9,000 ft, so expect cold nights.",
+          mustDo:
+            "Queens Garden + Navajo Loop combo (3 mi, 2–3 hr) descends past Thor's Hammer and Wall Street. Sunrise at Sunrise Point is non-negotiable.",
+          time: "Half day",
+          fee: "$35/vehicle · AtB covers",
+          nps: "https://www.nps.gov/brca",
+          may: "Highs 60s, nights in 30s. Snow possible on shaded trails — pack microspikes if storms roll through. Pre-Memorial-Day crowds still light.",
+          visitHours: 4,
+        },
+        "coral-pink": {
+          name: "Coral Pink Sand Dunes",
+          lat: 37.0367,
+          lng: -112.728,
+          type: "park",
+          wiki: "Coral_Pink_Sand_Dunes_State_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/f/ff/Coral_Pink_Sand_Dunes_State_Park.jpg",
+          overview:
+            "Pink-orange dunes wedged between Zion and Bryce. Mostly an ATV playground, but a fun 30-minute photo stop on the drive.",
+          mustDo: "Walk 10 minutes in. That's it.",
+          time: "30–60 min",
+          fee: "$10/vehicle (UT state park · not AtB)",
+          nps: "https://stateparks.utah.gov/parks/coral-pink",
+          may: "Warm, windy, low crowds.",
+          visitHours: 1,
+        },
+        "antelope-lower": {
+          name: "Antelope Canyon (Lower)",
+          lat: 36.9054,
+          lng: -111.4106,
+          type: "park",
+          wiki: "Antelope_Canyon",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/b/b5/USA_Antelope-Canyon.jpg",
+          overview:
+            "Navajo-owned slot canyon with sculpted sandstone walls that glow orange and purple. Guided tours only — Lower is narrower, more scrambling, cheaper than Upper.",
+          mustDo:
+            "Book ahead with Dixie Ellis or Ken's Tours. 90-min guided walk.",
+          time: "2–3 hr with transit",
+          fee: "$55–65 + $8 Navajo permit · NOT AtB",
+          nps: "https://www.navajonationparks.org",
+          may: "Hot, dusty. Book 2–4 weeks ahead minimum. Upper midday beam slots need 2–3 months.",
+          visitHours: 3,
+        },
+        "horseshoe-bend": {
+          name: "Horseshoe Bend",
+          lat: 36.8791,
+          lng: -111.5105,
+          type: "park",
+          wiki: "Horseshoe_Bend_(Arizona)",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/a/a5/Grand_Canyon_Horseshoe_Bend.jpg",
+          overview:
+            "The classic 270° meander of the Colorado, 1,000 ft below a sandstone cliff. One of the most photographed overlooks in the Southwest.",
+          mustDo: "1.5 mi RT walk from parking. 45–60 min.",
+          time: "1 hr",
+          fee: "$10/vehicle (City of Page · NOT AtB)",
+          nps: "https://www.cityofpage.org/horseshoe-bend",
+          may: "Sunrise or late afternoon — it's exposed and hot midday.",
+          visitHours: 1,
+        },
+        "monument-valley": {
+          name: "Monument Valley",
+          lat: 36.9832,
+          lng: -110.1121,
+          type: "park",
+          wiki: "Monument_Valley",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/7/78/Monument_Valley%2C_Utah%2C_USA_%2823611451292%29.jpg",
+          overview:
+            "The definitive Western landscape — red sandstone buttes rising 1,000 ft from the desert floor. Every John Ford film you've ever seen was shot here.",
+          mustDo:
+            "17-mile Valley Drive (self-drive dirt loop, OK for regular cars — go slow). Sunset from The View Hotel balcony.",
+          time: "Half day",
+          fee: "$8/person (Navajo Nation · NOT AtB)",
+          nps: "https://navajonationparks.org/tribal-parks/monument-valley",
+          may: "Highs 75–85°F, windy.",
+          visitHours: 4,
+        },
+        arches: {
+          name: "Arches National Park",
+          lat: 38.7331,
+          lng: -109.5925,
+          type: "park",
+          wiki: "Arches_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/f/f0/Delicate_arch_sunset.jpg",
+          overview:
+            "2,000+ natural stone arches in 119 sq mi — densest concentration on Earth. Big 2026 change: timed-entry reservations no longer required.",
+          mustDo:
+            "Delicate Arch (3 mi RT, 480 ft gain) at late-afternoon light. Windows Section for short walks. Landscape Arch via Devils Garden.",
+          time: "Half to full day",
+          fee: "$30/vehicle · AtB covers",
+          nps: "https://www.nps.gov/arch",
+          may: "Highs 75–85°F. No timed-entry needed in 2026. Parking still fills by 9–10 AM weekends.",
+          visitHours: 5,
+        },
+        canyonlands: {
+          name: "Canyonlands (Island in the Sky)",
+          lat: 38.3597,
+          lng: -109.8681,
+          type: "park",
+          wiki: "Canyonlands_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/9/99/Green_River_Overlook_Ekker_Butte.jpg",
+          overview:
+            "Mesa-top district of a 527-sq-mi park split by the Colorado and Green Rivers. Think Arches on steroids, with fewer arches and more Grand Canyon.",
+          mustDo:
+            "Mesa Arch at sunrise (0.5 mi RT — the glowing-arch shot). Grand View Point (2 mi RT). Drive to Green River Overlook.",
+          time: "Half day",
+          fee: "$30/vehicle · AtB covers",
+          nps: "https://www.nps.gov/cany",
+          may: "Highs 75–85°F, cool nights, windy. Noticeably quieter than Arches.",
+          visitHours: 4,
+        },
+        moab: {
+          name: "Moab, UT",
+          lat: 38.5733,
+          lng: -109.5498,
+          type: "city-stop",
+          wiki: "Moab,_Utah",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/7/70/Moab%2C_Utah_downtown.jpg",
+          overview:
+            "Outdoor-adventure basecamp between Arches and Canyonlands. Dense cluster of breweries, outfitters, motels.",
+          mustDo:
+            "Milt's Stop & Eat (since 1954), float the Colorado, drive Potash Road for petroglyphs.",
+          time: "1–2 night base",
+          fee: "—",
+          nps: "https://www.discovermoab.com",
+          may: "Pleasant — highs 75–85°F.",
+          visitHours: 2,
+        },
+        "mesa-verde": {
+          name: "Mesa Verde",
+          lat: 37.2309,
+          lng: -108.4618,
+          type: "park",
+          wiki: "Mesa_Verde_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/8/83/Cliff_Palace-Colorado-Mesa_Verde_NP.jpg",
+          overview:
+            "5,000+ ancestral Puebloan archaeological sites, including Cliff Palace — the largest cliff dwelling in North America.",
+          mustDo:
+            "Cliff Palace ranger tour (check opening date — usually mid/late May). Otherwise: Spruce Tree House viewpoint and Mesa Top Loop drive.",
+          time: "Half day",
+          fee: "$30/vehicle · AtB covers",
+          nps: "https://www.nps.gov/meve",
+          may: "Cliff Palace & Balcony House tours typically start late May — may not be open your dates. Verify on nps.gov.",
+          visitHours: 4,
+        },
+        durango: {
+          name: "Durango, CO",
+          lat: 37.2753,
+          lng: -107.8801,
+          type: "city-stop",
+          wiki: "Durango,_Colorado",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/d/d9/Durango%2C_Colorado.jpg",
+          overview:
+            "Victorian railroad town at 6,500 ft, gateway to the San Juans and the D&SNG narrow-gauge line up to Silverton.",
+          mustDo:
+            "Main Avenue historic district, dinner at Ore House. If you want the famous drive: US-550 north (Million Dollar Highway) to Silverton is a 3-hr round-trip.",
+          time: "1 night",
+          fee: "—",
+          nps: "https://www.durango.org",
+          may: "Cool — high 60s. US-550 usually open but can close short-notice for avalanche mitigation. Check cotrip.org.",
+          visitHours: 3,
+        },
+        "great-sand-dunes": {
+          name: "Great Sand Dunes",
+          lat: 37.7916,
+          lng: -105.5943,
+          type: "park",
+          wiki: "Great_Sand_Dunes_National_Park_and_Preserve",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/4/48/Great_Sand_Dunes_National_Park_and_Preserve%2C_United_States_%28Unsplash%29.jpg",
+          overview:
+            "Tallest dunes in North America (up to 750 ft) at 8,200 ft, backed by the 14,000-ft Sangre de Cristos and fronted by seasonal Medano Creek.",
+          mustDo:
+            "Climb High Dune (2.5 mi RT, strenuous in sand, 2–3 hr). Splash in Medano Creek if it's running.",
+          time: "Half day",
+          fee: "$25/vehicle · AtB covers",
+          nps: "https://www.nps.gov/grsa",
+          may: "Highs 60–70°F. Medano Creek in early May is usually just inches deep — peak flow is late May / early June.",
+          visitHours: 4,
+        },
+        "santa-fe": {
+          name: "Santa Fe, NM",
+          lat: 35.687,
+          lng: -105.9378,
+          type: "city-stop",
+          wiki: "Santa_Fe,_New_Mexico",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/8/8d/Palace_of_the_Governors.jpg",
+          overview:
+            "Highest state capital in the US (7,200 ft). 400+ years of Pueblo, Spanish, and Anglo history layered into adobe architecture and a serious food scene.",
+          mustDo:
+            "The Plaza, Canyon Road galleries, O'Keeffe Museum. Eat: green-chile cheeseburger at The Shed, blue-corn breakfast at Tecolote, Cafe Pasqual's for dinner.",
+          time: "Half to full day",
+          fee: "—",
+          nps: "https://www.santafe.org",
+          may: "Cool and breezy — highs 70s.",
+          visitHours: 5,
+        },
+        taos: {
+          name: "Taos, NM",
+          lat: 36.4072,
+          lng: -105.5734,
+          type: "park",
+          wiki: "Taos_Pueblo",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/4/4f/Taos_Pueblo_2017-05-05.jpg",
+          overview:
+            "High-desert art town with Taos Pueblo (UNESCO, continuously inhabited 1,000+ years) and the Rio Grande Gorge Bridge 650 ft above the river.",
+          mustDo:
+            "Taos Pueblo tour ($25 · check tribal schedule). Walk the gorge bridge. Eat at Lambert's.",
+          time: "Half day",
+          fee: "$25 pueblo · NOT AtB",
+          nps: "https://taospueblo.com",
+          may: "Cool, breezy.",
+          visitHours: 3,
+        },
+        "joshua-tree": {
+          name: "Joshua Tree",
+          lat: 33.8734,
+          lng: -115.901,
+          type: "park",
+          wiki: "Joshua_Tree_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/f/f9/Joshua_Tree_-_Cyclops_%2B_Potato_Head_-_Sunrise.jpg",
+          overview:
+            "Two deserts (Mojave + Colorado) meet around the trademark twisty trees and massive granite boulder piles. Easy add-on from Newport Beach — just 2.5 hr east.",
+          mustDo:
+            "Hidden Valley Loop (1 mi), Keys View at sunset, Cholla Cactus Garden.",
+          time: "Half day",
+          fee: "$30/vehicle · AtB covers",
+          nps: "https://www.nps.gov/jotr",
+          may: "Highs 85–90°F — warm but fine at dawn/dusk. Low crowds by mid-May.",
+          visitHours: 4,
+        },
+        "white-sands": {
+          name: "White Sands",
+          lat: 32.7872,
+          lng: -106.3257,
+          type: "park",
+          wiki: "White_Sands_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/c/cf/White_Sands_National_Park_visitor_center_and_native_plant_garden%2C_New_Mexico%2C_United_States.jpg",
+          overview:
+            "275 sq mi of pure white gypsum dunes — largest in the world — surrounded by White Sands Missile Range.",
+          mustDo:
+            "Dunes Drive (16 mi RT, 45 min). Alkali Flat Trail (5 mi, challenging in sand). Rent a sled at the gift shop.",
+          time: "Half day",
+          fee: "$25/vehicle · AtB covers",
+          nps: "https://www.nps.gov/whsa",
+          may: "Highs 80s, windy. Missile tests can close Dunes Drive or US-70 for up to 3 hr — check nps.gov week-of.",
+          visitHours: 4,
+        },
+        carlsbad: {
+          name: "Carlsbad Caverns",
+          lat: 32.1479,
+          lng: -104.5567,
+          type: "park",
+          wiki: "Carlsbad_Caverns_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/d/dd/Carlsbad_Interior_Formations.jpg",
+          overview:
+            "One of the largest underground chambers in North America, 750 ft below the Chihuahuan Desert. Limestone formations feel genuinely alien.",
+          mustDo:
+            "Big Room Trail (1.25 mi loop, 1.5 hr). Descend via Natural Entrance switchbacks (750 ft down, 1 hr) or take the elevator.",
+          time: "3–4 hr",
+          fee: "$15/person + $1/person timed entry · AtB covers entry",
+          nps: "https://www.nps.gov/cave",
+          may: "56°F underground — bring a jacket. Timed entry required via recreation.gov. Last entry 2 PM.",
+          visitHours: 4,
+        },
+        "petrified-forest": {
+          name: "Petrified Forest",
+          lat: 34.91,
+          lng: -109.8068,
+          type: "park",
+          wiki: "Petrified_Forest_National_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/5/51/Jasper_Forest_at_Petrified_Forest_NP_in_AZ_12.jpg",
+          overview:
+            "200-million-year-old petrified logs and the psychedelic Painted Desert — straddles I-40, so it doubles as a perfect lunch stop.",
+          mustDo:
+            "28-mi park road drive with stops (2–3 hr). Crystal Forest loop (0.75 mi).",
+          time: "2–3 hr",
+          fee: "$25/vehicle · AtB covers",
+          nps: "https://www.nps.gov/pefo",
+          may: "Warm, windy.",
+          visitHours: 3,
+        },
+        "valley-of-fire": {
+          name: "Valley of Fire",
+          lat: 36.4858,
+          lng: -114.5225,
+          type: "park",
+          wiki: "Valley_of_Fire_State_Park",
+          image:
+            "https://upload.wikimedia.org/wikipedia/commons/1/1f/Valley_of_fire_State_Park.jpg",
+          overview:
+            "Nevada's oldest state park — Aztec sandstone in flame-red hues, about an hour NE of Vegas. Fun detour en route to Utah.",
+          mustDo: "Fire Wave Trail (1.5 mi RT). White Domes Loop (1.1 mi).",
+          time: "Half day",
+          fee: "$15/vehicle (NV state park · NOT AtB)",
+          nps: "https://parks.nv.gov/parks/valley-of-fire",
+          may: "Warm, hot midday.",
+          visitHours: 3,
+        },
+
+        // Overnight waypoints (markers + map routing only)
+        "las-vegas": {
+          name: "Las Vegas, NV",
+          lat: 36.1699,
+          lng: -115.1398,
+          type: "waypoint",
+        },
+        williams: {
+          name: "Williams, AZ",
+          lat: 35.2494,
+          lng: -112.1871,
+          type: "waypoint",
+        },
+        flagstaff: {
+          name: "Flagstaff, AZ",
+          lat: 35.1983,
+          lng: -111.6513,
+          type: "waypoint",
+        },
+        albuquerque: {
+          name: "Albuquerque, NM",
+          lat: 35.0844,
+          lng: -106.6504,
+          type: "waypoint",
+        },
+        amarillo: {
+          name: "Amarillo, TX",
+          lat: 35.222,
+          lng: -101.8313,
+          type: "waypoint",
+        },
+        "oklahoma-city": {
+          name: "Oklahoma City, OK",
+          lat: 35.4676,
+          lng: -97.5164,
+          type: "waypoint",
+        },
+        "st-george": {
+          name: "St. George, UT",
+          lat: 37.0965,
+          lng: -113.5684,
+          type: "waypoint",
+        },
+        kanab: {
+          name: "Kanab, UT",
+          lat: 37.0475,
+          lng: -112.5263,
+          type: "waypoint",
+        },
+        page: {
+          name: "Page, AZ",
+          lat: 36.9147,
+          lng: -111.4558,
+          type: "waypoint",
+        },
+        kayenta: {
+          name: "Kayenta, AZ",
+          lat: 36.7275,
+          lng: -110.2537,
+          type: "waypoint",
+        },
+        richfield: {
+          name: "Richfield, UT",
+          lat: 38.7718,
+          lng: -112.0847,
+          type: "waypoint",
+        },
+        "green-river": {
+          name: "Green River, UT",
+          lat: 38.9955,
+          lng: -110.1595,
+          type: "waypoint",
+        },
+        alamosa: {
+          name: "Alamosa, CO",
+          lat: 37.4695,
+          lng: -105.87,
+          type: "waypoint",
+        },
+        "las-cruces": {
+          name: "Las Cruces, NM",
+          lat: 32.3199,
+          lng: -106.7637,
+          type: "waypoint",
+        },
+        springdale: {
+          name: "Springdale, UT",
+          lat: 37.1889,
+          lng: -112.9985,
+          type: "waypoint",
+        },
+        "jacob-lake": {
+          name: "Jacob Lake, AZ",
+          lat: 36.7139,
+          lng: -112.2112,
+          type: "waypoint",
+        },
+
+        // Post-Dallas shared
+        "little-rock": {
+          name: "Little Rock, AR",
+          lat: 34.7465,
+          lng: -92.2896,
+          type: "waypoint",
+        },
+        columbus: {
+          name: "Columbus, OH",
+          lat: 39.9612,
+          lng: -82.9988,
+          type: "waypoint",
+        },
+        indianapolis: {
+          name: "Indianapolis, IN",
+          lat: 39.7684,
+          lng: -86.1581,
+          type: "waypoint",
+        },
+        louisville: {
+          name: "Louisville, KY",
+          lat: 38.2527,
+          lng: -85.7585,
+          type: "waypoint",
+        },
+        pittsburgh: {
+          name: "Pittsburgh, PA",
+          lat: 40.4406,
+          lng: -79.9959,
+          type: "waypoint",
+        },
+      };
+
+      /* ============================================================
+   SHARED POST-DALLAS ITINERARIES
+   ============================================================ */
+      const DALLAS_SEGMENT = [
+        {
+          date: "arrive",
+          title: "Arrive Dallas · family",
+          drive: null,
+          stops: ["dallas"],
+          body: "Pecan Lodge brisket if you're up for it. Otherwise ease in.",
+          overnight: "Dallas",
+        },
+        {
+          date: "full",
+          title: "Dallas · family day",
+          drive: null,
+          stops: [],
+          body: "Family time. If a window: Bishop Arts, Reunion Tower at dusk, or Sixth Floor Museum.",
+          overnight: "Dallas",
+        },
+      ];
+      const DALLAS_EXTRA = {
+        date: "extra",
+        title: "Dallas · extra day",
+        drive: null,
+        stops: [],
+        body: "More family time. Klyde Warren Park, Perot Museum, Deep Ellum for dinner.",
+        overnight: "Dallas",
+      };
+      const DALLAS_TO_STL = {
+        title: "Dallas → St. Louis",
+        drive: { mi: 630, hr: 9.5 },
+        body: "Long one. I-30 E → Little Rock → I-40 → I-44. Stop in Little Rock for lunch or push through.",
+        stops: [],
+        overnight: "St. Louis",
+        wps: ["little-rock"],
+      };
+      const STL_SEGMENT = [
+        {
+          date: "arrive",
+          title: "Arrive St. Louis · family",
+          drive: null,
+          stops: ["st-louis"],
+          body: "Welcome. Settle in with Claire's parents.",
+          overnight: "St. Louis",
+        },
+        {
+          date: "full",
+          title: "St. Louis · family day",
+          drive: null,
+          stops: [],
+          body: "Family time. If a window: Gateway Arch tram, Forest Park, City Museum. Toasted ravioli on The Hill.",
+          overnight: "St. Louis",
+        },
+      ];
+      const STL_EXTRA = {
+        date: "extra",
+        title: "St. Louis · extra day",
+        drive: null,
+        stops: [],
+        body: "More family time. City Museum, Forest Park, Ted Drewes frozen custard.",
+        overnight: "St. Louis",
+      };
+      const POST_STL_COLUMBUS = [
+        {
+          title: "St. Louis → Columbus, OH",
+          drive: { mi: 410, hr: 6 },
+          body: "Quick I-70 push across Indiana. North Market or Short North for dinner in Columbus.",
+          stops: [],
+          overnight: "Columbus",
+          wps: ["indianapolis"],
+        },
+        {
+          title: "Columbus → Brooklyn",
+          drive: { mi: 520, hr: 8.5 },
+          body: "Leave early. Pittsburgh → PA Turnpike → NJ → into Brooklyn by late afternoon. Home.",
+          stops: [],
+          overnight: "Brooklyn",
+          wps: ["pittsburgh"],
+        },
+      ];
+      const POST_STL_BOOKIT = [
+        {
+          title: "St. Louis → Brooklyn (push)",
+          drive: { mi: 950, hr: 15 },
+          body: "Two drivers swapping every 2–3 hr. Leave by 6 AM. I-70 → I-76 → I-78. Arrive exhausted but home. Only attempt with a rested buffer day afterward.",
+          stops: [],
+          overnight: "Brooklyn",
+          wps: ["indianapolis", "columbus", "pittsburgh"],
+        },
+      ];
+
+      /* ============================================================
+   PARK REGIONS — display grouping (routing uses longitude order)
+   ============================================================ */
+      const PARK_REGIONS = [
+        {
+          id: "socal-nv",
+          label: "SoCal / Nevada",
+          parks: ["joshua-tree", "valley-of-fire"],
+        },
+        {
+          id: "utah",
+          label: "Utah Canyon Country",
+          parks: ["zion", "coral-pink", "bryce"],
+        },
+        {
+          id: "arizona",
+          label: "Arizona",
+          parks: [
+            "grand-canyon-s",
+            "sedona",
+            "antelope-lower",
+            "horseshoe-bend",
+          ],
+        },
+        {
+          id: "navajo",
+          label: "Navajo Country",
+          parks: ["monument-valley", "petrified-forest"],
+        },
+        {
+          id: "moab",
+          label: "Moab",
+          parks: ["arches", "canyonlands", "moab"],
+        },
+        {
+          id: "four-corners",
+          label: "Four Corners",
+          parks: ["mesa-verde", "durango"],
+        },
+        {
+          id: "new-mexico",
+          label: "New Mexico",
+          parks: [
+            "santa-fe",
+            "taos",
+            "great-sand-dunes",
+            "white-sands",
+            "carlsbad",
+          ],
+        },
+      ];
+
+      /* ============================================================
+   ROUTING HELPERS
+   ============================================================ */
+      // Haversine drive-time estimate: straight-line miles × road factor ÷ avg speed
+      const PARK_CLUSTERS = [
+        { id: "page", parks: ["antelope-lower", "horseshoe-bend"] },
+        { id: "moab", parks: ["moab", "arches", "canyonlands"] },
+        { id: "four-corners", parks: ["mesa-verde", "durango"] },
+        { id: "zion-coral", parks: ["zion", "coral-pink"] },
+        { id: "bryce-coral", parks: ["bryce", "coral-pink"] },
+      ];
+
+      function sharesCluster(a, b) {
+        if (!a || !b) return false;
+        if (a === b) return true;
+        return PARK_CLUSTERS.some(
+          (c) => c.parks.includes(a) && c.parks.includes(b),
+        );
+      }
+
+      const CHUNK_PALETTE = [
+        "#C98A3B", // ochre
+        "#8B7355", // warm taupe
+        "#6B8E6B", // sage
+        "#4A6670", // dusty teal
+        "#8B5E3C", // rust-brown
+        "#A67C52", // sand
+        "#5F7A6B", // muted forest
+        "#7A6A8E", // dusty plum
+      ];
+
+      function buildActiveColors(selectedParks) {
+        const sorted = [...selectedParks]
+          .map((id) => ({ id, lng: L_PLACES[id]?.lng ?? 0 }))
+          .sort((a, b) => a.lng - b.lng);
+        const clusterKey = {};
+        PARK_CLUSTERS.forEach((c) =>
+          c.parks.forEach((p) => {
+            if (!clusterKey[p]) clusterKey[p] = c.id;
+          }),
+        );
+        const colorByKey = new Map();
+        const out = {};
+        let idx = 0;
+        for (const { id } of sorted) {
+          const key = clusterKey[id] || id;
+          if (!colorByKey.has(key)) {
+            colorByKey.set(key, CHUNK_PALETTE[idx % CHUNK_PALETTE.length]);
+            idx++;
+          }
+          out[id] = colorByKey.get(key);
+        }
+        return out;
+      }
+
+      function haversineHours(p1, p2) {
+        const R = 3959;
+        const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
+        const dLng = ((p2.lng - p1.lng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((p1.lat * Math.PI) / 180) *
+            Math.cos((p2.lat * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return (miles * 1.3) / 55;
+      }
+
+      function haversineMiles(p1, p2) {
+        const R = 3959;
+        const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
+        const dLng = ((p2.lng - p1.lng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((p1.lat * Math.PI) / 180) *
+            Math.cos((p2.lat * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.3;
+      }
+
+      const MAX_DRIVE_PER_DAY = 9; // hours before flagging red
+      const AMARILLO = { lat: 35.222, lng: -101.8313 }; // split point for long Dallas leg
+
+      function buildItinerary(
+        selectedParks,
+        headStart,
+        parkNights = new Map(),
+        dallasDays = 2,
+        stlDays = 2,
+        postStlMode = "columbus",
+      ) {
+        const BASE_DAYS = headStart ? 11 : 10;
+        const postStlLen = postStlMode === "columbus" ? 2 : 1;
+        // daysNeeded = park days + drive-to-Dallas.
+        // Trip = daysNeeded + dallasDays + drive-to-STL (1) + stlDays + postStlLen
+        const MAX_DAYS = Math.max(
+          0,
+          BASE_DAYS - dallasDays - 1 - stlDays - postStlLen,
+        );
+
+        // Sort selected parks west → east by longitude
+        const sorted = Array.from(selectedParks)
+          .filter((id) => L_PLACES[id])
+          .sort((a, b) => L_PLACES[a].lng - L_PLACES[b].lng);
+
+        if (sorted.length === 0) {
+          return {
+            days: [],
+            dallasLegs: [],
+            totalMiles: 0,
+            totalHours: 0,
+            daysNeeded: 0,
+            overLimit: false,
+            maxDays: MAX_DAYS,
+          };
+        }
+
+        // Build days greedily
+        const startDates = headStart
+          ? [
+              "Thu May 7",
+              "Fri May 8",
+              "Sat May 9",
+              "Sun May 10",
+              "Mon May 11",
+              "Tue May 12",
+              "Wed May 13",
+            ]
+          : [
+              "Fri May 8",
+              "Sat May 9",
+              "Sun May 10",
+              "Mon May 11",
+              "Tue May 12",
+              "Wed May 13",
+            ];
+
+        const days = [];
+        let currentDay = {
+          parks: [],
+          driveHours: 0,
+          visitHours: 0,
+          totalHours: 0,
+          date: "",
+        };
+        let prevLoc = L_PLACES["newport-beach"];
+
+        const mkDay = () => ({
+          parks: [],
+          driveHours: 0,
+          visitHours: 0,
+          totalHours: 0,
+          date: "",
+        });
+
+        for (const id of sorted) {
+          const park = L_PLACES[id];
+          const nights = parkNights.get(id) ?? 1;
+          const driveToThis = haversineHours(prevLoc, park);
+          const visitH = park.visitHours || 4;
+          const wouldAdd = driveToThis + visitH;
+
+          if (
+            currentDay.parks.length > 0 &&
+            currentDay.totalHours + wouldAdd > MAX_DRIVE_PER_DAY
+          ) {
+            days.push(currentDay);
+            prevLoc = L_PLACES[currentDay.parks[currentDay.parks.length - 1]];
+            currentDay = mkDay();
+          }
+
+          const actualDrive = haversineHours(prevLoc, park);
+          currentDay.driveHours += actualDrive;
+          currentDay.visitHours += visitH;
+          currentDay.totalHours += actualDrive + visitH;
+          currentDay.parks.push(id);
+          prevLoc = park;
+
+          // Extra nights: end this day here, insert dedicated full days
+          if (nights > 1) {
+            days.push(currentDay);
+            currentDay = mkDay();
+            for (let n = 1; n < nights; n++) {
+              days.push({
+                parks: [id],
+                driveHours: 0,
+                visitHours: 8,
+                totalHours: 8,
+                date: "",
+                extraNight: true,
+              });
+            }
+          }
+        }
+        if (currentDay.parks.length > 0) days.push(currentDay);
+
+        // Assign dates
+        days.forEach((d, i) => {
+          d.date = startDates[i] || "";
+        });
+
+        // Add final leg to Dallas
+        const lastPark = L_PLACES[sorted[sorted.length - 1]];
+        const driveToDallas = haversineHours(lastPark, L_PLACES["dallas"]);
+        const milesToDallas = haversineMiles(lastPark, L_PLACES["dallas"]);
+
+        let dallasLegs = [];
+        {
+          const isLong = driveToDallas > MAX_DRIVE_PER_DAY;
+          const dallasNote = isLong
+            ? lastPark.lng < -104
+              ? "long day — consider Palo Duro Canyon or Santa Rosa, NM"
+              : lastPark.lng < -100
+                ? "long day — consider Palo Duro Canyon"
+                : null
+            : null;
+          const lastDate = startDates[days.length] || "";
+          dallasLegs = [
+            {
+              isDriving: true,
+              title: `→ Dallas`,
+              driveHours: Math.round(driveToDallas * 10) / 10,
+              overnight: "Dallas",
+              date: lastDate,
+              warning: isLong,
+              note: dallasNote,
+            },
+          ];
+        }
+
+        // Totals
+        let totalMiles = haversineMiles(
+          L_PLACES["newport-beach"],
+          L_PLACES[sorted[0]],
+        );
+        for (let i = 0; i < sorted.length - 1; i++) {
+          totalMiles += haversineMiles(
+            L_PLACES[sorted[i]],
+            L_PLACES[sorted[i + 1]],
+          );
+        }
+        totalMiles += milesToDallas;
+        totalMiles = Math.round(totalMiles);
+
+        let totalHours =
+          days.reduce((s, d) => s + d.totalHours, 0) + driveToDallas;
+        totalHours = Math.round(totalHours * 10) / 10;
+
+        const daysNeeded = days.length + dallasLegs.length;
+
+        return {
+          days,
+          dallasLegs,
+          totalMiles,
+          totalHours,
+          daysNeeded,
+          overLimit: daysNeeded > MAX_DAYS,
+          maxDays: MAX_DAYS,
+        };
+      }
+
+      /* ============================================================
+   MAP COMPONENT
+   ============================================================ */
+      function MapPanel({ itinerary, postStlMode }) {
+        const mapRef = useRef(null);
+        const instanceRef = useRef(null);
+        const layerRef = useRef(null);
+
+        useEffect(() => {
+          if (instanceRef.current) return;
+          const m = L.map(mapRef.current, {
+            zoomControl: true,
+            attributionControl: true,
+            scrollWheelZoom: true,
+            worldCopyJump: false,
+          }).setView([37, -100], 4);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 18,
+            attribution: "&copy; OpenStreetMap contributors",
+          }).addTo(m);
+          instanceRef.current = m;
+          layerRef.current = L.layerGroup().addTo(m);
+        }, []);
+
+        useEffect(() => {
+          const m = instanceRef.current;
+          const layer = layerRef.current;
+          if (!m || !layer) return;
+          layer.clearLayers();
+
+          const COLOR = "var(--terracotta, #B84A2E)";
+          const COLOR_HEX = "#B84A2E";
+
+          // Build sequence: Newport → selected parks (west→east) → Dallas → STL → Brooklyn
+          const orderedParks = itinerary.days.flatMap((d) => d.parks);
+
+          const seq = [{ id: "newport-beach", kind: "endpoint" }];
+          orderedParks.forEach((id) => seq.push({ id, kind: "stop" }));
+          seq.push({ id: "dallas", kind: "family" });
+          (DALLAS_TO_STL.wps || []).forEach((wp) =>
+            seq.push({ id: wp, kind: "waypoint" }),
+          );
+          seq.push({ id: "st-louis", kind: "family" });
+          const postSeg =
+            postStlMode === "bookit" ? POST_STL_BOOKIT : POST_STL_COLUMBUS;
+          postSeg.forEach((d) =>
+            (d.wps || []).forEach((wp) =>
+              seq.push({ id: wp, kind: "waypoint" }),
+            ),
+          );
+          seq.push({ id: "brooklyn", kind: "endpoint" });
+
+          const line = seq
+            .map((s) => L_PLACES[s.id])
+            .filter(Boolean)
+            .map((p) => [p.lat, p.lng]);
+
+          if (line.length < 2) return;
+
+          L.polyline(line, {
+            color: COLOR_HEX,
+            weight: 3.5,
+            opacity: 0.85,
+            lineCap: "round",
+            lineJoin: "round",
+          }).addTo(layer);
+          L.polyline(line, {
+            color: COLOR_HEX,
+            weight: 10,
+            opacity: 0.12,
+          }).addTo(layer);
+
+          let stopNum = 0;
+          seq.forEach((s) => {
+            const p = L_PLACES[s.id];
+            if (!p) return;
+            if (s.kind === "waypoint") {
+              const icon = L.divIcon({
+                className: "",
+                html: `<div class="marker-pin overnight" style="--variant-color:${COLOR_HEX}"></div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7],
+              });
+              L.marker([p.lat, p.lng], { icon })
+                .bindPopup(`<strong>${p.name}</strong>Overnight`)
+                .addTo(layer);
+            } else if (s.kind === "endpoint") {
+              const label = s.id === "newport-beach" ? "START" : "END";
+              const icon = L.divIcon({
+                className: "",
+                html: `<div class="marker-pin endpoint">${label}</div>`,
+                iconSize: [36, 22],
+                iconAnchor: [18, 11],
+              });
+              L.marker([p.lat, p.lng], { icon })
+                .bindPopup(`<strong>${p.name}</strong>`)
+                .addTo(layer);
+            } else if (s.kind === "family") {
+              const icon = L.divIcon({
+                className: "",
+                html: `<div class="marker-pin family">${p.name.includes("Dallas") ? "DAL" : "STL"}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+              });
+              L.marker([p.lat, p.lng], { icon })
+                .bindPopup(`<strong>${p.name}</strong>${p.blurb || ""}`)
+                .addTo(layer);
+            } else if (s.kind === "stop") {
+              stopNum += 1;
+              const icon = L.divIcon({
+                className: "",
+                html: `<div class="marker-pin" style="background:${COLOR_HEX}">${stopNum}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+              });
+              const popup = `<strong>${p.name}</strong>${p.overview ? p.overview.slice(0, 120) + "…" : ""}`;
+              const marker = L.marker([p.lat, p.lng], { icon })
+                .bindPopup(popup)
+                .addTo(layer);
+              marker.on("click", () => {
+                const el = document.getElementById(`park-${s.id}`);
+                if (el)
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }
+          });
+
+          const bounds = L.latLngBounds(line);
+          m.flyToBounds(bounds, {
+            padding: [30, 30],
+            duration: 0.6,
+            maxZoom: 6,
+          });
+        }, [itinerary, postStlMode]);
+
+        return (
+          <div className="map-panel">
+            <div id="map" ref={mapRef}></div>
+            <div className="map-legend">
+              <div className="map-legend-title">Newport → Brooklyn</div>
+              <div className="map-legend-stats">
+                {itinerary.totalMiles.toLocaleString()} mi pre-Dallas ·{" "}
+                {itinerary.daysNeeded} days
+              </div>
+            </div>
+            <div className="map-tip">
+              Tap a numbered pin to jump to that stop →
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
+   PARK CARD — stylized SVG scenes instead of photos
+   ============================================================ */
+
+      // Palette per park: [skyTop, skyBottom, midShape, foreShape]
+      const SCENE_CONFIG = {
+        "grand-canyon-s": {
+          scene: "canyon",
+          palette: ["#F0B978", "#E08C3C", "#9C4A1A", "#52210D"],
+        },
+        sedona: {
+          scene: "mesa",
+          palette: ["#F1D6AC", "#D88A5A", "#9C4622", "#4F1F0D"],
+        },
+        zion: {
+          scene: "canyon",
+          palette: ["#F0C5A0", "#D17A55", "#8A3F26", "#4B1F13"],
+        },
+        bryce: {
+          scene: "hoodoo",
+          palette: ["#F5DFBB", "#F0A589", "#C26A50", "#7A3323"],
+        },
+        "coral-pink": {
+          scene: "dune",
+          palette: ["#FAE8CD", "#F4BF9F", "#DE9970", "#B06C4A"],
+        },
+        "antelope-lower": {
+          scene: "slot",
+          palette: ["#D9995C", "#AE5C2C", "#6C2A18", "#2A0E07"],
+        },
+        "horseshoe-bend": {
+          scene: "bend",
+          palette: ["#F4CFA5", "#D98C52", "#944B20", "#4D2312"],
+        },
+        "monument-valley": {
+          scene: "mesa",
+          palette: ["#E8B58E", "#C47544", "#8B3F1F", "#451E0E"],
+        },
+        arches: {
+          scene: "arch",
+          palette: ["#ECBB7B", "#D68139", "#9C4A1C", "#581E0A"],
+        },
+        canyonlands: {
+          scene: "canyon",
+          palette: ["#E8C594", "#B57A45", "#7B4320", "#3D1D0F"],
+        },
+        moab: {
+          scene: "mesa",
+          palette: ["#D99E6A", "#AF6935", "#7A3F1E", "#3E1D0E"],
+        },
+        "mesa-verde": {
+          scene: "adobe",
+          palette: ["#E5C995", "#9BAF7E", "#5E7848", "#2D3E23"],
+        },
+        durango: {
+          scene: "mountain",
+          palette: ["#E8D2A6", "#C4B58C", "#556E4A", "#25341F"],
+        },
+        "great-sand-dunes": {
+          scene: "dune",
+          palette: ["#C8C7A2", "#EAC299", "#9B8A78", "#4D4B51"],
+        },
+        "santa-fe": {
+          scene: "adobe",
+          palette: ["#F1DCB8", "#D78B5F", "#A04A2A", "#532314"],
+        },
+        taos: {
+          scene: "adobe",
+          palette: ["#EED5B0", "#CE8A66", "#84474A", "#3B1E26"],
+        },
+        "joshua-tree": {
+          scene: "joshua",
+          palette: ["#D6B97B", "#B69A65", "#7C8469", "#2F3942"],
+        },
+        "white-sands": {
+          scene: "dune",
+          palette: ["#B7D5D9", "#EFE9DC", "#D9CBA7", "#768987"],
+        },
+        carlsbad: {
+          scene: "cave",
+          palette: ["#6B6A8A", "#4B3E58", "#2E2234", "#100D16"],
+        },
+        "petrified-forest": {
+          scene: "fossil",
+          palette: ["#E8D3A8", "#D5A672", "#9A6E3E", "#4A2D14"],
+        },
+        "valley-of-fire": {
+          scene: "canyon",
+          palette: ["#E9B68B", "#D37B3E", "#9E381C", "#4D170A"],
+        },
+      };
+
+      const Scenes = {
+        canyon: ({ mid, fore }) => (
+          <>
+            <path
+              d="M0 95 L40 80 L60 88 L100 70 L140 82 L180 65 L220 78 L260 62 L310 75 L360 60 L400 70 L400 125 L0 125 Z"
+              fill={mid}
+              opacity="0.55"
+            />
+            <path
+              d="M0 130 L55 112 L95 122 L145 105 L195 118 L245 100 L305 115 L360 98 L400 108 L400 158 L0 158 Z"
+              fill={mid}
+              opacity="0.8"
+            />
+            <path
+              d="M0 160 L70 144 L130 152 L190 138 L260 148 L340 134 L400 142 L400 180 L0 180 Z"
+              fill={fore}
+            />
+          </>
+        ),
+        hoodoo: ({ mid, fore }) => (
+          <>
+            <rect
+              x="22"
+              y="78"
+              width="22"
+              height="82"
+              rx="3"
+              fill={mid}
+              opacity="0.65"
+            />
+            <rect
+              x="55"
+              y="92"
+              width="18"
+              height="68"
+              rx="3"
+              fill={mid}
+              opacity="0.6"
+            />
+            <rect
+              x="85"
+              y="62"
+              width="26"
+              height="98"
+              rx="3"
+              fill={mid}
+              opacity="0.75"
+            />
+            <rect
+              x="125"
+              y="85"
+              width="20"
+              height="75"
+              rx="3"
+              fill={mid}
+              opacity="0.65"
+            />
+            <rect
+              x="160"
+              y="55"
+              width="28"
+              height="105"
+              rx="3"
+              fill={mid}
+              opacity="0.8"
+            />
+            <rect
+              x="205"
+              y="78"
+              width="22"
+              height="82"
+              rx="3"
+              fill={mid}
+              opacity="0.7"
+            />
+            <rect
+              x="245"
+              y="48"
+              width="30"
+              height="112"
+              rx="3"
+              fill={mid}
+              opacity="0.85"
+            />
+            <rect
+              x="295"
+              y="88"
+              width="20"
+              height="72"
+              rx="3"
+              fill={mid}
+              opacity="0.65"
+            />
+            <rect
+              x="325"
+              y="65"
+              width="26"
+              height="95"
+              rx="3"
+              fill={mid}
+              opacity="0.75"
+            />
+            <rect
+              x="365"
+              y="92"
+              width="22"
+              height="68"
+              rx="3"
+              fill={mid}
+              opacity="0.6"
+            />
+            <rect x="0" y="158" width="400" height="22" fill={fore} />
+          </>
+        ),
+        dune: ({ mid, fore }) => (
+          <>
+            <path
+              d="M0 100 Q70 75 140 95 Q220 115 300 90 Q360 72 400 88 L400 180 L0 180 Z"
+              fill={mid}
+              opacity="0.55"
+            />
+            <path
+              d="M0 130 Q80 105 160 125 Q240 145 320 120 Q370 105 400 115 L400 180 L0 180 Z"
+              fill={mid}
+              opacity="0.8"
+            />
+            <path
+              d="M0 155 Q100 135 200 152 Q300 170 400 148 L400 180 L0 180 Z"
+              fill={fore}
+            />
+          </>
+        ),
+        mesa: ({ mid, fore }) => (
+          <>
+            <rect x="0" y="158" width="400" height="22" fill={fore} />
+            <path
+              d="M30 160 L30 95 L38 88 L128 86 L138 93 L138 160 Z"
+              fill={mid}
+              opacity="0.88"
+            />
+            <path
+              d="M195 160 L195 108 L203 101 L285 99 L295 106 L295 160 Z"
+              fill={mid}
+              opacity="0.85"
+            />
+            <path
+              d="M318 160 L318 125 L326 120 L378 118 L385 125 L385 160 Z"
+              fill={mid}
+              opacity="0.7"
+            />
+            <rect
+              x="0"
+              y="158"
+              width="400"
+              height="4"
+              fill="rgba(0,0,0,0.15)"
+            />
+          </>
+        ),
+        slot: ({ mid, fore }) => (
+          <>
+            <path
+              d="M0 0 L0 180 L110 180 L150 105 L175 45 L188 0 Z"
+              fill={mid}
+              opacity="0.92"
+            />
+            <path
+              d="M400 0 L400 180 L290 180 L250 105 L225 45 L212 0 Z"
+              fill={mid}
+              opacity="0.92"
+            />
+            <path
+              d="M110 180 L150 105 L175 45 L140 28 L115 80 L75 180 Z"
+              fill={fore}
+              opacity="0.95"
+            />
+            <path
+              d="M290 180 L250 105 L225 45 L260 28 L285 80 L325 180 Z"
+              fill={fore}
+              opacity="0.95"
+            />
+          </>
+        ),
+        bend: ({ mid, fore }) => (
+          <>
+            {/* Horseshoe-shaped river silhouette */}
+            <path
+              d="M0 155 L0 78 L90 78 L110 88 L115 110 L130 128 L160 140 L200 143 L240 140 L270 128 L285 110 L290 88 L310 78 L400 78 L400 155 Z"
+              fill={mid}
+              opacity="0.85"
+            />
+            <path d="M0 180 L0 155 L400 155 L400 180 Z" fill={fore} />
+            <ellipse
+              cx="200"
+              cy="135"
+              rx="46"
+              ry="10"
+              fill="rgba(255,255,255,0.2)"
+            />
+          </>
+        ),
+        arch: ({ mid, fore }) => (
+          <>
+            <rect x="0" y="155" width="400" height="25" fill={fore} />
+            {/* Broad canyon backdrop */}
+            <path
+              d="M0 140 L80 115 L140 125 L210 105 L290 120 L360 108 L400 115 L400 158 L0 158 Z"
+              fill={mid}
+              opacity="0.6"
+            />
+            {/* Arch shape */}
+            <path
+              d="M150 158 L150 95 Q150 65 185 65 L215 65 Q250 65 250 95 L250 158 L235 158 L235 95 Q235 82 215 82 L185 82 Q165 82 165 95 L165 158 Z"
+              fill={mid}
+              opacity="0.95"
+            />
+          </>
+        ),
+        adobe: ({ mid, fore }) => (
+          <>
+            <rect
+              x="0"
+              y="150"
+              width="400"
+              height="30"
+              fill={fore}
+              opacity="0.55"
+            />
+            <rect
+              x="30"
+              y="110"
+              width="75"
+              height="48"
+              fill={mid}
+              opacity="0.85"
+            />
+            <rect x="90" y="92" width="55" height="66" fill={mid} />
+            <rect
+              x="135"
+              y="100"
+              width="80"
+              height="58"
+              fill={mid}
+              opacity="0.9"
+            />
+            <rect x="200" y="84" width="48" height="74" fill={mid} />
+            <rect
+              x="242"
+              y="104"
+              width="70"
+              height="54"
+              fill={mid}
+              opacity="0.85"
+            />
+            <rect
+              x="305"
+              y="94"
+              width="60"
+              height="64"
+              fill={mid}
+              opacity="0.92"
+            />
+            {/* Viga dots */}
+            <g fill={fore} opacity="0.5">
+              {[40, 52, 64, 76, 88, 100].map((x) => (
+                <circle key={x} cx={x} cy="124" r="1.5" />
+              ))}
+              {[145, 157, 169, 181, 193, 205].map((x) => (
+                <circle key={x} cx={x} cy="114" r="1.5" />
+              ))}
+              {[250, 262, 274, 286, 298].map((x) => (
+                <circle key={x} cx={x} cy="118" r="1.5" />
+              ))}
+            </g>
+          </>
+        ),
+        mountain: ({ mid, fore }) => (
+          <>
+            <path
+              d="M0 150 L60 95 L110 110 L170 70 L230 100 L290 75 L350 95 L400 80 L400 170 L0 170 Z"
+              fill={mid}
+              opacity="0.7"
+            />
+            <path
+              d="M0 165 L70 135 L130 145 L200 120 L270 140 L340 125 L400 135 L400 180 L0 180 Z"
+              fill={fore}
+            />
+            {/* Snow caps */}
+            <path
+              d="M165 73 L170 70 L175 73 L178 82 L172 80 L167 82 Z"
+              fill="rgba(255,255,255,0.75)"
+            />
+            <path
+              d="M285 78 L290 75 L295 78 L298 86 L292 84 L287 86 Z"
+              fill="rgba(255,255,255,0.7)"
+            />
+          </>
+        ),
+        joshua: ({ mid, fore }) => (
+          <>
+            <path
+              d="M0 145 L70 118 L140 128 L200 110 L265 125 L335 113 L400 122 L400 175 L0 175 Z"
+              fill={mid}
+              opacity="0.4"
+            />
+            <rect
+              x="0"
+              y="160"
+              width="400"
+              height="20"
+              fill={fore}
+              opacity="0.7"
+            />
+            {/* Joshua tree center */}
+            <g fill={fore}>
+              <rect x="196" y="92" width="8" height="72" />
+              <path d="M198 95 L186 75 L183 82 L196 102 Z" />
+              <path d="M202 90 L216 68 L219 76 L204 98 Z" />
+              <path d="M198 72 L192 52 L204 52 L202 72 Z" />
+              <circle cx="179" cy="72" r="7" />
+              <circle cx="222" cy="65" r="8" />
+              <circle cx="198" cy="47" r="9" />
+              <circle cx="184" cy="80" r="4" />
+              <circle cx="216" cy="77" r="4" />
+            </g>
+            {/* Smaller tree */}
+            <g fill={fore} opacity="0.8">
+              <rect x="68" y="120" width="5" height="42" />
+              <path d="M69 122 L61 110 L59 114 L68 127 Z" />
+              <path d="M72 118 L80 108 L83 112 L73 123 Z" />
+              <circle cx="56" cy="107" r="4" />
+              <circle cx="85" cy="105" r="4" />
+              <circle cx="71" cy="100" r="5" />
+            </g>
+            <g fill={fore} opacity="0.75">
+              <rect x="322" y="125" width="5" height="38" />
+              <path d="M323 127 L315 116 L313 120 L322 131 Z" />
+              <path d="M327 125 L336 114 L338 118 L328 128 Z" />
+              <circle cx="311" cy="113" r="4" />
+              <circle cx="340" cy="111" r="4" />
+            </g>
+          </>
+        ),
+        cave: ({ mid, fore }) => (
+          <>
+            <rect
+              x="0"
+              y="0"
+              width="400"
+              height="180"
+              fill={fore}
+              opacity="0.35"
+            />
+            {/* Stalactites */}
+            <path d="M15 0 L23 52 L32 0 Z" fill={fore} opacity="0.85" />
+            <path d="M55 0 L68 78 L82 0 Z" fill={fore} opacity="0.75" />
+            <path d="M100 0 L108 42 L117 0 Z" fill={fore} opacity="0.9" />
+            <path d="M140 0 L155 90 L170 0 Z" fill={fore} opacity="0.8" />
+            <path d="M195 0 L205 55 L216 0 Z" fill={fore} opacity="0.9" />
+            <path d="M235 0 L252 98 L270 0 Z" fill={fore} opacity="0.78" />
+            <path d="M295 0 L305 48 L315 0 Z" fill={fore} opacity="0.88" />
+            <path d="M340 0 L355 82 L370 0 Z" fill={fore} opacity="0.78" />
+            {/* Stalagmites */}
+            <path d="M30 180 L45 128 L58 180 Z" fill={fore} />
+            <path d="M90 180 L108 105 L128 180 Z" fill={fore} />
+            <path d="M160 180 L180 145 L200 180 Z" fill={fore} />
+            <path d="M218 180 L242 115 L265 180 Z" fill={fore} />
+            <path d="M290 180 L315 135 L340 180 Z" fill={fore} />
+            <path d="M355 180 L372 142 L390 180 Z" fill={fore} />
+          </>
+        ),
+        fossil: ({ mid, fore }) => (
+          <>
+            <rect
+              x="0"
+              y="108"
+              width="400"
+              height="18"
+              fill={mid}
+              opacity="0.45"
+            />
+            <rect
+              x="0"
+              y="122"
+              width="400"
+              height="58"
+              fill={fore}
+              opacity="0.55"
+            />
+            {/* Petrified logs */}
+            <ellipse cx="85" cy="148" rx="62" ry="7" fill={fore} />
+            <ellipse
+              cx="82"
+              cy="146"
+              rx="16"
+              ry="8"
+              fill={mid}
+              opacity="0.85"
+            />
+            <circle cx="82" cy="146" r="5" fill={fore} opacity="0.6" />
+            <ellipse
+              cx="275"
+              cy="160"
+              rx="88"
+              ry="8"
+              fill={fore}
+              opacity="0.92"
+            />
+            <ellipse
+              cx="272"
+              cy="157"
+              rx="22"
+              ry="10"
+              fill={mid}
+              opacity="0.85"
+            />
+            <circle cx="272" cy="157" r="6" fill={fore} opacity="0.5" />
+            {/* Distant butte */}
+            <path
+              d="M300 108 L300 82 L308 76 L352 76 L358 82 L358 108 Z"
+              fill={mid}
+              opacity="0.65"
+            />
+          </>
+        ),
+      };
+
+      // ============================================================
+      // CAMPING DATA — per-park campground info for early May 2026
+      // ============================================================
+      const CAMPING_DATA = {
+        zion: {
+          difficulty: "hard",
+          diffLabel: "Hard · book far ahead",
+          inPark:
+            "Watchman (203 sites, year-round, $20–45) · South (117 sites, reduced 2026 due to construction) · Lava Point (6 primitive sites, FCFS, 40 min from main canyon)",
+          window:
+            "Watchman: 6 months ahead on recreation.gov. South: 14 days ahead.",
+          gotcha:
+            "April/May brings a tent caterpillar infestation at Watchman — they drop from cottonwoods onto tents and tables. Outdoor sitting gets miserable.",
+          backup:
+            "Zion Ponderosa Ranch (outside park, east entrance) · Springdale hotels · BLM dispersed near Virgin/Rockville",
+          tip: "Refresh recreation.gov 2 weeks out for cancellations. Sites get claimed in seconds, use Campflare alerts.",
+        },
+        bryce: {
+          difficulty: "moderate",
+          diffLabel: "Best realistic target",
+          inPark:
+            "North (103 sites, ~25 reservable in Loop A, rest FCFS) · Sunset (99 sites, reservation, opens mid-April)",
+          window:
+            "North Loop A: 6 months ahead. Sunset: 14 days ahead (opens ~April 24 for May 8 arrival — way better odds).",
+          gotcha:
+            "Elevation 8,000 ft — nights drop into the 30s in May, possible late-season snow. Pack 20°F sleeping bags.",
+          backup:
+            "Ruby's Inn campground (1 mile from entrance, full amenities) · Red Canyon BLM · King Creek in Dixie NF · Kodachrome Basin SP (~30 min, beautiful)",
+          tip: "North FCFS loops are your best shot in-park — arrive by 9–10 AM on a weekday. Dark Sky Park — world-class stargazing.",
+        },
+        arches: {
+          difficulty: "hard",
+          diffLabel: "Very hard in-park · easy nearby",
+          inPark: "Devils Garden (51 sites, the only in-park option, $25)",
+          window: "6 months ahead on rec.gov. Booked months out.",
+          gotcha: "No showers, no dump station. Limited cell service.",
+          backup:
+            "Moab BLM is the play here — 10+ campgrounds along Hwy 128 (Colorado River) and Hwy 279 (Potash Rd). Big Bend, Upper Big Bend, Hal Canyon, Oak Grove, Goose Island — $20, scenic, far less competitive.",
+          tip: "For east-Utah or Rockies variants, plan on Moab BLM not Devils Garden. Show up Thursday/Friday afternoon for BLM.",
+        },
+        canyonlands: {
+          difficulty: "moderate",
+          diffLabel: "Willow Flat is gettable",
+          inPark:
+            "Willow Flat (12 sites, Island in the Sky, FCFS only, $15) · no reservations at all",
+          window:
+            "First-come-first-served only. Arrive by 10 AM weekdays for best odds.",
+          gotcha:
+            "No water at campground — must bring your own. Small and remote.",
+          backup:
+            "Dead Horse Point SP (21 sites, reservable, dramatic views, ~15 min away) · Moab BLM · Horsethief BLM just north of park",
+          tip: "Combine with Arches via Moab BLM as base. Willow Flat's sunset from nearby Green River Overlook is elite.",
+        },
+        "grand-canyon-s": {
+          difficulty: "hard",
+          diffLabel: "Competitive but high-volume",
+          inPark:
+            "Mather (327 sites — largest pool, 6-mo window, $18) · Desert View (50 sites, opens mid-May, likely too late for your window) · Trailer Village (RV hookups, private)",
+          window:
+            "Mather: 6 months ahead on rec.gov. Desert View opens mid-May.",
+          gotcha:
+            "Fire restrictions effective April 1, 2026 — no wood/charcoal fires at Mather. Propane stoves only.",
+          backup:
+            "Ten-X Campground (Kaibab NF, 9 mi south, FCFS, $20) · Desert Sky Campground (Hipcamp) · Tusayan hotels",
+          tip: "Mather's big capacity means cancellations hit daily — statistically best NPS odds on the route.",
+        },
+        "monument-valley": {
+          difficulty: "easy",
+          diffLabel: "Easiest of the iconic parks",
+          inPark:
+            "The View Campground (Navajo-owned tent + RV sites + cabins, dramatic butte views)",
+          window:
+            "Books on monumentvalleyview.com directly — NOT recreation.gov. Much less demand than Utah NPS parks.",
+          gotcha:
+            "Tribal park, not NPS. Navajo Nation rules apply (no alcohol). Windy — stake tents well.",
+          backup: "Goulding's Lodge + Campground nearby · Kayenta hotels",
+          tip: "If you're running Utah Breadth, this is WAY easier to book than Zion or Bryce. Worth swapping a hotel night for.",
+        },
+        "great-sand-dunes": {
+          difficulty: "moderate",
+          diffLabel: "Underrated · gettable",
+          inPark:
+            "Piñon Flats (88 sites, reservation required, $20, open April 1)",
+          window:
+            "6 months ahead on rec.gov. Less competitive than Utah parks.",
+          gotcha:
+            "Afternoon wind can be severe — pitch tent in morning. Elevation 8,200 ft — cold nights in May.",
+          backup:
+            "San Luis State Park · Zapata Falls Campground (BLM, 8 mi south, FCFS) · Alamosa hotels",
+          tip: "On the Rockies variant, this is a great trade for the Alamosa hotel night. Views of the dunes + Sangre de Cristos.",
+        },
+        "joshua-tree": {
+          difficulty: "easy",
+          diffLabel: "Multiple FCFS options",
+          inPark:
+            "Hidden Valley, White Tank, Belle, Ryan (all FCFS, $15) · Black Rock, Cottonwood, Jumbo Rocks, Indian Cove, Sheep Pass (reservable, $20)",
+          window:
+            "FCFS sites are walkable; reservable on rec.gov 6 months ahead.",
+          gotcha:
+            "No water at most campgrounds — haul your own in. May daytime highs mid-80s.",
+          backup: "Indian Cove BLM · 29 Palms hotels",
+          tip: "For Desert Wild Card variant's Day 1, Hidden Valley or Jumbo Rocks on FCFS is very doable if you arrive Friday by noon.",
+        },
+        "capitol-reef": {
+          difficulty: "moderate",
+          diffLabel: "Quietly available",
+          inPark:
+            "Fruita (65 reservable sites, 6-mo window, $25) · Cathedral Valley + Cedar Mesa (primitive, FCFS, high-clearance recommended)",
+          window: "6 months ahead on rec.gov. Cancellation rate real.",
+          gotcha: "Deer scat common on grassy sites. No showers in park.",
+          backup:
+            "Thousand Lakes RV Park (Torrey, 6 mi) · Sunglow Campground (Forest Service) · Hipcamp options nearby",
+          tip: "Among the most beautiful NPS campgrounds anywhere — historic orchards, Fremont River. Worth the Scenic Byway 12 detour alone.",
+        },
+        moab: {
+          difficulty: "easy",
+          diffLabel: "Abundant options",
+          inPark: "N/A (use BLM)",
+          window:
+            "Most BLM sites reservable on rec.gov 6 months out; some FCFS.",
+          gotcha: "Fire restrictions common in May — propane stoves safer.",
+          backup:
+            "Hwy 128 corridor: Big Bend, Upper Big Bend, Hal Canyon, Oak Grove, Goose Island, Drinks Canyon (all $20 BLM, river frontage). Hwy 279: Williams Bottom, Gold Bar.",
+          tip: "Moab is THE easiest part of the trip to camp — BLM density is unmatched. Pick any Hwy 128 site for red-rock-and-river views.",
+        },
+        "mesa-verde": {
+          difficulty: "easy",
+          diffLabel: "Rarely full",
+          inPark:
+            "Morefield Campground (267 sites — massive — reservable, $36 including dump station)",
+          window:
+            "Usually available day-of in May. Private concessionaire, not rec.gov — visitmesaverde.com.",
+          gotcha:
+            "Cliff Palace tours typically start late May — may miss your window. Rim drives still open.",
+          backup: "Mancos State Park · Cortez hotels",
+          tip: "Don't stress this one — showers, full amenities, Morefield is basically never full in early May.",
+        },
+        "valley-of-fire": {
+          difficulty: "moderate",
+          diffLabel: "State park · easier than NPS",
+          inPark:
+            "Atlatl Rock + Arch Rock campgrounds (~72 sites, FCFS, $20 plus $15 entry)",
+          window: "FCFS — arrive mid-afternoon on weekdays.",
+          gotcha: "Can get hot. Limited shade.",
+          backup: "Overton RV parks (20 min)",
+          tip: "If stopping en-route between Vegas and Utah, this is a great FCFS option.",
+        },
+        "coral-pink": {
+          difficulty: "easy",
+          diffLabel: "Small but gettable",
+          inPark:
+            "Coral Pink Sand Dunes SP campground (22 sites, reservable, $35)",
+          window:
+            "Utah state parks reservations on reserveamerica.com up to 4 months ahead.",
+          gotcha: "ATV noise during the day — quiet after dark.",
+          backup: "Kanab hotels · Jacob Lake Inn",
+          tip: "Works well as overnight between Zion and Bryce on Utah Breadth variant.",
+        },
+        "white-sands": {
+          difficulty: "moderate",
+          diffLabel: "Backcountry only",
+          inPark:
+            "Backcountry camping only (10 sites, permits via rec.gov, carry-in only)",
+          window: "Advance permits recommended. No drive-up camping.",
+          gotcha:
+            "No water, no shade, no facilities. Missile tests can close park up to 3 hours.",
+          backup:
+            "Oliver Lee Memorial SP · Aguirre Spring BLM · Alamogordo hotels",
+          tip: "Camping here is for the experience of waking up in pure white dunes. Prep accordingly.",
+        },
+        carlsbad: {
+          difficulty: "moderate",
+          diffLabel: "Nearby options only",
+          inPark:
+            "No developed campground in park. Rattlesnake Canyon backcountry (permits required, primitive only).",
+          window: "Backcountry permits day-of at visitor center.",
+          gotcha: "Most visitors day-trip from Carlsbad/Whites City.",
+          backup:
+            "Brantley Lake State Park (15 mi, $14, reservable) · Carlsbad KOA · Whites City RV",
+          tip: "Brantley Lake is your realistic pick — affordable, lakeside, 15 min from caverns entrance.",
+        },
+        sedona: {
+          difficulty: "moderate",
+          diffLabel: "Forest Service options",
+          inPark:
+            "No NPS camping (Sedona isn't a NP). Coconino NF: Manzanita, Cave Springs, Pine Flat, Chavez Crossing — all reservable on rec.gov.",
+          window: "6 months ahead for Coconino NF. Some FCFS sites.",
+          gotcha: "Book Thu–Sun well ahead — Sedona gets hammered on weekends.",
+          backup: "Rancho Sedona RV Park · Hipcamp on outlying ranches",
+          tip: "Manzanita (Oak Creek, shaded, 6 mi north) is the classic pick.",
+        },
+        "horseshoe-bend": {
+          difficulty: "easy",
+          diffLabel: "Page-area lodging",
+          inPark: "No camping at the overlook itself — it's a parking lot.",
+          window: "—",
+          gotcha: "Tour operators fill up — Page-area motels fine Mon–Thu.",
+          backup:
+            "Wahweap Campground at Lake Powell (reservable, views) · Lone Rock Beach BLM (dispersed on the sand — cheap, memorable)",
+          tip: "Lone Rock Beach is a legitimate cult favorite — park on the beach at Lake Powell for $14/night.",
+        },
+        "antelope-lower": {
+          difficulty: "easy",
+          diffLabel: "Page lodging",
+          inPark: "N/A (tribal tour only access)",
+          window: "—",
+          gotcha: "Same as Horseshoe Bend — Page is the base.",
+          backup: "Wahweap, Lone Rock Beach, Page motels",
+          tip: "Pair with Horseshoe Bend for one Page-area lodging night.",
+        },
+      };
+
+      // Module-level cache so each park's image is fetched once per session
+      const IMAGE_CACHE = new Map(); // wiki slug → url string or null (null = known-failed)
+      const IMAGE_PROMISES = new Map(); // wiki slug → in-flight Promise
+
+      function fetchWikiImage(slug) {
+        if (!slug) return Promise.resolve(null);
+        if (IMAGE_CACHE.has(slug))
+          return Promise.resolve(IMAGE_CACHE.get(slug));
+        if (IMAGE_PROMISES.has(slug)) return IMAGE_PROMISES.get(slug);
+
+        const p = fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`,
+          {
+            method: "GET",
+            mode: "cors",
+            credentials: "omit",
+          },
+        )
+          .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+          .then((data) => {
+            // Prefer originalimage (fullsize); fall back to thumbnail (small).
+            // Bump the thumbnail width to 800px by rewriting the URL.
+            let url =
+              data.thumbnail?.source || data.originalimage?.source || null;
+            if (url && url.includes("/thumb/")) {
+              // Wikimedia thumbs follow: /thumb/X/XX/FILENAME/NNNpx-FILENAME
+              url = url.replace(/\/\d+px-/, "/800px-");
+            }
+            IMAGE_CACHE.set(slug, url);
+            return url;
+          })
+          .catch(() => {
+            IMAGE_CACHE.set(slug, null);
+            return null;
+          });
+
+        IMAGE_PROMISES.set(slug, p);
+        return p;
+      }
+
+      function ParkCard({ placeId, num, color }) {
+        const p = L_PLACES[placeId];
+        const cfg = SCENE_CONFIG[placeId];
+        const [imgUrl, setImgUrl] = useState(
+          p?.image || IMAGE_CACHE.get(p?.wiki) || null,
+        );
+        const [imgReady, setImgReady] = useState(false);
+
+        useEffect(() => {
+          if (!p?.wiki || p?.image) return; // skip API fetch when hardcoded image exists
+          let cancelled = false;
+          fetchWikiImage(p.wiki).then((url) => {
+            if (!cancelled && url) setImgUrl(url);
+          });
+          return () => {
+            cancelled = true;
+          };
+        }, [p?.wiki]);
+
+        if (!p || !p.overview) return null;
+        const sceneFn = cfg && Scenes[cfg.scene];
+
+        return (
+          <div className="park-card" id={`park-${placeId}`}>
+            <div className="park-hero">
+              {cfg && (
+                <>
+                  <div
+                    className="park-hero-bg"
+                    style={{
+                      background: `linear-gradient(180deg, ${cfg.palette[0]} 0%, ${cfg.palette[1]} 100%)`,
+                    }}
+                  />
+                  <svg
+                    className="park-hero-svg"
+                    viewBox="0 0 400 180"
+                    preserveAspectRatio="xMidYMid slice"
+                  >
+                    {sceneFn &&
+                      sceneFn({ mid: cfg.palette[2], fore: cfg.palette[3] })}
+                  </svg>
+                </>
+              )}
+              {imgUrl && (
+                <img
+                  src={imgUrl}
+                  alt={p.name}
+                  className={`park-hero-photo${imgReady ? " loaded" : ""}`}
+                  loading="lazy"
+                  onLoad={() => setImgReady(true)}
+                  onError={() => setImgUrl(null)}
+                />
+              )}
+              <div className="park-hero-marker" style={{ background: color }}>
+                {num}
+              </div>
+              <div className="park-hero-overlay">
+                <div className="park-hero-name">{p.name}</div>
+              </div>
+            </div>
+            <div className="park-body">
+              <p className="park-overview">{p.overview}</p>
+              {p.mustDo && (
+                <div className="park-detail-row">
+                  <div className="park-detail-label">Must-do</div>
+                  <div className="park-detail-value">{p.mustDo}</div>
+                </div>
+              )}
+              {p.time && (
+                <div className="park-detail-row">
+                  <div className="park-detail-label">Time</div>
+                  <div className="park-detail-value">{p.time}</div>
+                </div>
+              )}
+              {p.fee && (
+                <div className="park-detail-row">
+                  <div className="park-detail-label">Fee</div>
+                  <div className="park-detail-value">{p.fee}</div>
+                </div>
+              )}
+              {p.may && (
+                <div className="park-detail-row">
+                  <div className="park-detail-label">May '26</div>
+                  <div className="park-detail-value">
+                    <span className="park-flag warn">Seasonal</span>
+                    {p.may}
+                  </div>
+                </div>
+              )}
+              {p.nps && (
+                <div className="park-detail-row">
+                  <div className="park-detail-label">Info</div>
+                  <div className="park-detail-value">
+                    <a href={p.nps} target="_blank" rel="noopener noreferrer">
+                      Official site ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+              {CAMPING_DATA[placeId] && (
+                <div
+                  className="park-camping"
+                  data-difficulty={CAMPING_DATA[placeId].difficulty}
+                >
+                  <div className="park-camping-head">
+                    <span className="park-camping-icon" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 20L12 4l9 16" />
+                        <path d="M8 20l4-7 4 7" />
+                      </svg>
+                    </span>
+                    <div className="park-camping-head-text">
+                      <div className="park-camping-label">Camping</div>
+                      <div className="park-camping-difficulty">
+                        {CAMPING_DATA[placeId].diffLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="park-camping-body">
+                    {CAMPING_DATA[placeId].inPark &&
+                      CAMPING_DATA[placeId].inPark !== "N/A (use BLM)" && (
+                        <div className="camping-row">
+                          <div className="camping-row-label">In-park</div>
+                          <div className="camping-row-value">
+                            {CAMPING_DATA[placeId].inPark}
+                          </div>
+                        </div>
+                      )}
+                    {CAMPING_DATA[placeId].window &&
+                      CAMPING_DATA[placeId].window !== "—" && (
+                        <div className="camping-row">
+                          <div className="camping-row-label">Booking</div>
+                          <div className="camping-row-value">
+                            {CAMPING_DATA[placeId].window}
+                          </div>
+                        </div>
+                      )}
+                    {CAMPING_DATA[placeId].gotcha && (
+                      <div className="camping-row">
+                        <div className="camping-row-label">Watch out</div>
+                        <div className="camping-row-value camping-warn">
+                          {CAMPING_DATA[placeId].gotcha}
+                        </div>
+                      </div>
+                    )}
+                    {CAMPING_DATA[placeId].backup && (
+                      <div className="camping-row">
+                        <div className="camping-row-label">Backup</div>
+                        <div className="camping-row-value">
+                          {CAMPING_DATA[placeId].backup}
+                        </div>
+                      </div>
+                    )}
+                    {CAMPING_DATA[placeId].tip && (
+                      <div className="camping-tip">
+                        {CAMPING_DATA[placeId].tip}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
+   DAY CARD
+   ============================================================ */
+      function DayCard({
+        day,
+        dayNum,
+        dayLabel,
+        color,
+        parkCounter,
+        mandatory,
+        date,
+      }) {
+        const displayDate = date !== undefined ? date : day.date;
+        return (
+          <div
+            className={`day-card${mandatory ? " mandatory" : ""}`}
+            style={{ "--variant-color": color }}
+          >
+            <div className="day-header">
+              <div>
+                <div className="day-num">{dayNum}</div>
+                <div className="day-num-sub">{dayLabel}</div>
+              </div>
+              <div className="day-meta">
+                {displayDate && <div className="day-date">{displayDate}</div>}
+                <div className="day-title">{day.title}</div>
+              </div>
+              {day.drive && day.drive.mi > 0 && (
+                <div className="day-drive">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4l2-5h14l2 5v4a2 2 0 0 1-2 2M5 17a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2m5 0a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2" />
+                  </svg>
+                  {day.drive.mi} mi · {day.drive.hr} hr
+                </div>
+              )}
+            </div>
+            {day.body && (
+              <div className="day-body">
+                <p>{day.body}</p>
+              </div>
+            )}
+            {day.overnight && (
+              <div className="day-overnight">Overnight · {day.overnight}</div>
+            )}
+            {day.stops && day.stops.length > 0 && (
+              <>
+                {day.stops.map((stopId) => {
+                  const num = parkCounter.getAndIncrement(stopId);
+                  return (
+                    <ParkCard
+                      key={stopId + num}
+                      placeId={stopId}
+                      num={num}
+                      color={color}
+                    />
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      }
+
+      /* ============================================================
+   PARK PICKER
+   ============================================================ */
+      function ParkPicker({
+        selectedParks,
+        onToggle,
+        parkNights,
+        onAdjustNights,
+        activeColors,
+      }) {
+        return (
+          <div className="park-picker">
+            {PARK_REGIONS.map((region) => (
+              <div key={region.id} className="picker-region">
+                <div className="picker-region-label">{region.label}</div>
+                <div className="picker-pills">
+                  {region.parks.map((id) => {
+                    const p = L_PLACES[id];
+                    if (!p) return null;
+                    const on = selectedParks.has(id);
+                    const nights = parkNights.get(id) ?? 1;
+                    const color = activeColors?.[id];
+                    return (
+                      <div key={id} className="park-pill-group">
+                        <button
+                          className={`park-pill${on ? " on" : ""}${PARK_CLUSTERS.some((c) => c.parks.includes(id)) ? " cluster" : ""}`}
+                          onClick={() => onToggle(id)}
+                          style={
+                            on && color
+                              ? {
+                                  background: color,
+                                  borderColor: color,
+                                  color: "#fff",
+                                }
+                              : undefined
+                          }
+                          title={p.overview}
+                        >
+                          {p.name}
+                          {on && <span className="pill-check">✓</span>}
+                        </button>
+                        {on && (
+                          <div className="pill-nights-ctrl">
+                            <button
+                              className="nights-adj"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustNights(id, -1);
+                              }}
+                              disabled={nights <= 1}
+                            >
+                              −
+                            </button>
+                            <span className="nights-count">
+                              {nights}
+                              {"🌙"}
+                            </span>
+                            <button
+                              className="nights-adj"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustNights(id, 1);
+                              }}
+                              disabled={nights >= 5}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      /* ============================================================
+   PARK BAR (fixed bottom)
+   ============================================================ */
+      function ParkBar({
+        selectedParks,
+        onToggle,
+        parkNights,
+        onAdjustNights,
+        activeColors,
+      }) {
+        return (
+          <div className="park-bar">
+            {PARK_REGIONS.map((region) => (
+              <div key={region.id} className="bar-region">
+                <div className="bar-region-label">{region.label}</div>
+                <div className="bar-pills">
+                  {region.parks.map((id) => {
+                    const p = L_PLACES[id];
+                    if (!p) return null;
+                    const on = selectedParks.has(id);
+                    const nights = parkNights.get(id) ?? 1;
+                    const color = activeColors?.[id];
+                    return (
+                      <div key={id} className="park-pill-group">
+                        <button
+                          className={`park-pill${on ? " on" : ""}${PARK_CLUSTERS.some((c) => c.parks.includes(id)) ? " cluster" : ""}`}
+                          onClick={() => onToggle(id)}
+                          style={
+                            on && color
+                              ? {
+                                  background: color,
+                                  borderColor: color,
+                                  color: "#fff",
+                                }
+                              : undefined
+                          }
+                          title={p.overview}
+                        >
+                          {p.name}
+                          {on && <span className="pill-check">✓</span>}
+                        </button>
+                        {on && (
+                          <div className="pill-nights-ctrl">
+                            <button
+                              className="nights-adj"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustNights(id, -1);
+                              }}
+                              disabled={nights <= 1}
+                            >
+                              −
+                            </button>
+                            <span className="nights-count">
+                              {nights}
+                              {"🌙"}
+                            </span>
+                            <button
+                              className="nights-adj"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustNights(id, 1);
+                              }}
+                              disabled={nights >= 5}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      /* ============================================================
+   DAY TIMELINE
+   ============================================================ */
+      const TL_SHORT = {
+        "joshua-tree": "Joshua Tree",
+        "valley-of-fire": "Valley of Fire",
+        zion: "Zion",
+        "coral-pink": "Coral Pink",
+        bryce: "Bryce Canyon",
+        "grand-canyon-s": "Grand Canyon",
+        sedona: "Sedona",
+        "antelope-lower": "Antelope Canyon",
+        "horseshoe-bend": "Horseshoe Bend",
+        "monument-valley": "Monument Valley",
+        arches: "Arches",
+        canyonlands: "Canyonlands",
+        moab: "Moab",
+        "mesa-verde": "Mesa Verde",
+        durango: "Durango",
+        "petrified-forest": "Petrified Forest",
+        "santa-fe": "Santa Fe",
+        taos: "Taos",
+        "great-sand-dunes": "Great Sand Dunes",
+        "white-sands": "White Sands",
+        carlsbad: "Carlsbad",
+      };
+      function tlName(id) {
+        return TL_SHORT[id] || L_PLACES[id]?.name || id;
+      }
+
+      function DayTimeline({
+        itinerary,
+        dallasDays = 1,
+        stlDays = 1,
+        headStart = false,
+        totalDays = 0,
+        activeColors = {},
+      }) {
+        const { days, maxDays } = itinerary;
+        const TL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        function slotDate(i) {
+          const base = headStart ? new Date(2026, 4, 7) : new Date(2026, 4, 8);
+          const d = new Date(base.getTime() + i * 86400000);
+          return `${TL_DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+        }
+
+        const stops = [];
+
+        // Newport endpoint
+        stops.push({
+          type: "endpoint",
+          label: "Newport",
+          locId: "newport-beach",
+          date: slotDate(0),
+        });
+
+        // Park slots — one stop per park; only first park of each day gets the date
+        for (let i = 0; i < maxDays; i++) {
+          const day = days[i];
+          if (!day) {
+            stops.push({
+              type: "empty",
+              label: String(i + 1),
+              locId: null,
+              date: slotDate(i),
+            });
+            continue;
+          }
+          const dayDate = slotDate(i);
+          day.parks.forEach((pid, j) => {
+            stops.push({
+              type: day.extraNight ? "park-extra" : "park",
+              label: tlName(pid) + (day.extraNight && j === 0 ? " 🌙" : ""),
+              locId: pid,
+              date: j === 0 ? dayDate : null,
+            });
+          });
+        }
+
+        const { daysNeeded = 0 } = itinerary;
+        const dallasStart = daysNeeded; // drive-to-Dallas is already in daysNeeded
+        const stlStart = dallasStart + dallasDays + 1; // +1 for drive-to-STL
+        for (let i = 0; i < dallasDays; i++) {
+          stops.push({
+            type: "fixed",
+            label: "Dallas",
+            locId: "dallas",
+            date: slotDate(dallasStart + i),
+          });
+        }
+        for (let i = 0; i < stlDays; i++) {
+          stops.push({
+            type: "fixed",
+            label: "STL",
+            locId: "st-louis",
+            date: slotDate(stlStart + i),
+          });
+        }
+
+        stops.push({
+          type: "endpoint",
+          label: "Brooklyn",
+          locId: "brooklyn",
+          date: totalDays > 0 ? slotDate(totalDays - 1) : null,
+          overflow: itinerary.overLimit,
+        });
+
+        function renderConnector(from, to, key) {
+          const sameLoc = from.locId && to.locId && from.locId === to.locId;
+          if (
+            sameLoc ||
+            (from.locId && to.locId && sharesCluster(from.locId, to.locId))
+          ) {
+            return <div key={key} className="tl-dash" />;
+          }
+          return (
+            <div key={key} className="tl-arrow">
+              →
+            </div>
+          );
+        }
+
+        function renderStop(s, i) {
+          const cls =
+            s.type === "endpoint"
+              ? "tl-bubble endpoint"
+              : s.type === "empty"
+                ? "tl-bubble"
+                : `tl-bubble filled${s.type === "park-extra" ? " extra-night" : ""}${s.type === "fixed" ? " fixed" : ""}`;
+          const prev = i > 0 ? stops[i - 1] : null;
+          const emDashFromPrev =
+            prev && prev.locId && s.locId && sharesCluster(prev.locId, s.locId);
+          const slotCls = emDashFromPrev ? "tl-slot cont" : "tl-slot";
+          const isPark = s.type === "park" || s.type === "park-extra";
+          const chunkColor = isPark ? activeColors[s.locId] : null;
+          let pillStyle = chunkColor
+            ? { background: chunkColor, borderColor: chunkColor }
+            : undefined;
+          if (s.overflow) {
+            pillStyle = {
+              background: "var(--terracotta)",
+              borderColor: "var(--terracotta)",
+            };
+          }
+          const labelStyle = s.overflow
+            ? { color: "var(--terracotta)", fontWeight: 600 }
+            : undefined;
+          return (
+            <div key={"s" + i} className={slotCls}>
+              <div className={cls} style={pillStyle}>
+                {s.label}
+              </div>
+              <div className="tl-label" style={labelStyle}>
+                {s.date || "\u00A0"}
+              </div>
+            </div>
+          );
+        }
+
+        const nodes = [];
+        stops.forEach((s, i) => {
+          if (i > 0) nodes.push(renderConnector(stops[i - 1], s, "c" + i));
+          nodes.push(renderStop(s, i));
+        });
+
+        return <div className="day-timeline">{nodes}</div>;
+      }
+
+      /* ============================================================
+   TRIP METER
+   ============================================================ */
+      function TripMeter({ itinerary, headStart, onHeadStartToggle }) {
+        const { daysNeeded, maxDays, totalMiles, totalHours, overLimit } =
+          itinerary;
+        const pct = maxDays > 0 ? Math.min(daysNeeded / maxDays, 1) : 0;
+        const barColor = overLimit
+          ? "var(--terracotta)"
+          : pct >= 0.85
+            ? "#C98A3B"
+            : "var(--sage)";
+
+        return (
+          <div className={`trip-meter${overLimit ? " over-limit" : ""}`}>
+            <div className="meter-row">
+              <div className="meter-days">
+                <span className="meter-val" style={{ color: barColor }}>
+                  {daysNeeded}
+                </span>
+                <span className="meter-of"> / {maxDays} days pre-Dallas</span>
+              </div>
+              <div className="meter-stats">
+                {totalMiles.toLocaleString()} mi · ~{totalHours} hr driving
+              </div>
+            </div>
+            <div className="meter-bar-track">
+              <div
+                className="meter-bar-fill"
+                style={{ width: `${pct * 100}%`, background: barColor }}
+              />
+            </div>
+            {overLimit && (
+              <div className="meter-warning">
+                ⚠ {daysNeeded - maxDays} day
+                {daysNeeded - maxDays > 1 ? "s" : ""} over — remove a stop or
+                enable the Thu head-start
+              </div>
+            )}
+            <div className="meter-headstart">
+              <button
+                className={`headstart-btn${headStart ? " active" : ""}`}
+                onClick={onHeadStartToggle}
+              >
+                {headStart
+                  ? "✓ Leaving Thu May 7 (7 days)"
+                  : "Leave Thu May 7 for +1 day"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
+   DRIVING DAY CARD — for auto-generated drive legs
+   ============================================================ */
+      function DriveDayCard({
+        dayNum,
+        date,
+        title,
+        driveHours,
+        overnight,
+        warn,
+        warning,
+        note,
+      }) {
+        const isWarn = warn || warning;
+        const hr = Math.round(driveHours * 10) / 10;
+        return (
+          <div
+            className={`day-card${isWarn ? " drive-warn" : ""}`}
+            style={{ "--variant-color": "var(--terracotta)" }}
+          >
+            <div className="day-header">
+              <div>
+                <div className="day-num">{dayNum}</div>
+                <div className="day-num-sub">day</div>
+              </div>
+              <div className="day-meta">
+                {date && <div className="day-date">{date}</div>}
+                <div className="day-title">{title}</div>
+              </div>
+              <div className={`day-drive${isWarn ? " day-drive-warn" : ""}`}>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4l2-5h14l2 5v4a2 2 0 0 1-2 2M5 17a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2m5 0a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2" />
+                </svg>
+                ~{hr} hr{isWarn ? " ⚠" : ""}
+              </div>
+            </div>
+            {overnight && (
+              <div className="day-overnight">Overnight · {overnight}</div>
+            )}
+            {note && <div className="day-drive-note">{note}</div>}
+          </div>
+        );
+      }
+
+      /* ============================================================
+   APP
+   ============================================================ */
+      function App() {
+        const [selectedParks, setSelectedParks] = useState(
+          new Set(["grand-canyon-s", "sedona", "santa-fe"]),
+        );
+        const [headStart, setHeadStart] = useState(false);
+        const [postStlMode, setPostStlMode] = useState("columbus");
+        const [parkNights, setParkNights] = useState(new Map());
+        const [dallasDays, setDallasDays] = useState(2);
+        const [stlDays, setStlDays] = useState(2);
+
+        function adjustDallasDays(d) {
+          setDallasDays((prev) => Math.max(1, Math.min(4, prev + d)));
+        }
+        function adjustStlDays(d) {
+          setStlDays((prev) => Math.max(1, Math.min(5, prev + d)));
+        }
+
+        function getNights(id) {
+          return parkNights.get(id) ?? 1;
+        }
+        function adjustNights(id, delta) {
+          setParkNights((prev) => {
+            const m = new Map(prev);
+            const next = Math.max(1, Math.min(5, (m.get(id) ?? 1) + delta));
+            if (next === 1) m.delete(id);
+            else m.set(id, next);
+            return m;
+          });
+        }
+
+        const itinerary = useMemo(
+          () =>
+            buildItinerary(
+              selectedParks,
+              headStart,
+              parkNights,
+              dallasDays,
+              stlDays,
+              postStlMode,
+            ),
+          [
+            selectedParks,
+            headStart,
+            parkNights,
+            dallasDays,
+            stlDays,
+            postStlMode,
+          ],
+        );
+
+        const activeColors = useMemo(
+          () => buildActiveColors(selectedParks),
+          [selectedParks],
+        );
+
+        const parkCounter = useMemo(() => {
+          const seen = new Map();
+          let i = 0;
+          return {
+            getAndIncrement(id) {
+              if (seen.has(id)) return seen.get(id);
+              i += 1;
+              seen.set(id, i);
+              return i;
+            },
+          };
+        }, [selectedParks]);
+
+        const contentRef = useRef(null);
+        useEffect(() => {
+          if (contentRef.current) contentRef.current.scrollTop = 0;
+        }, [selectedParks]);
+
+        function togglePark(id) {
+          setSelectedParks((prev) => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          });
+        }
+
+        const totalMiles = itinerary.totalMiles + 630 + 950;
+        const totalDays =
+          itinerary.daysNeeded +
+          dallasDays +
+          1 +
+          stlDays +
+          (postStlMode === "columbus" ? 2 : 1);
+        const postSeg =
+          postStlMode === "columbus" ? POST_STL_COLUMBUS : POST_STL_BOOKIT;
+
+        // Build dynamic Dallas/STL day arrays
+        const dallasDayCards = Array.from({ length: dallasDays }, (_, i) =>
+          i < DALLAS_SEGMENT.length ? DALLAS_SEGMENT[i] : DALLAS_EXTRA,
+        );
+        const stlDayCards = Array.from({ length: stlDays }, (_, i) =>
+          i < STL_SEGMENT.length ? STL_SEGMENT[i] : STL_EXTRA,
+        );
+        const COLOR = "var(--terracotta)";
+
+        const CARD_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const CARD_MON = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        function dateForDay(n) {
+          const base = headStart ? new Date(2026, 4, 7) : new Date(2026, 4, 8);
+          const d = new Date(base.getTime() + (n - 1) * 86400000);
+          return `${CARD_DOW[d.getDay()]} ${CARD_MON[d.getMonth()]} ${d.getDate()}`;
+        }
+
+        let dn = 0;
+        const nextDay = () => {
+          dn += 1;
+          return dn;
+        };
+
+        return (
+          <div className="app">
+            <header className="header">
+              <div>
+                <h1 className="header-title">
+                  Newport Beach <em>→</em> Brooklyn
+                </h1>
+                <div className="header-sub">Build your route · May 2026</div>
+              </div>
+              <div className="header-meta">
+                <strong>Tim &amp; Claire</strong>
+                <br />~{totalMiles.toLocaleString()} mi · {totalDays} days total
+                <br />
+                <span style={{ color: "var(--terracotta)" }}>●</span>{" "}
+                {itinerary.totalMiles.toLocaleString()} mi pre-Dallas
+              </div>
+            </header>
+
+            <MapPanel itinerary={itinerary} postStlMode={postStlMode} />
+
+            <div className="content-panel" ref={contentRef}>
+              <div className="content-inner">
+                {/* PARK PICKER */}
+                <div className="eyebrow">Pick your stops</div>
+                <h2 className="section-title">Build the route</h2>
+                <p className="section-desc">
+                  Toggle parks on or off — the itinerary builds itself, west to
+                  east.
+                </p>
+                <div className="cluster-legend">
+                  <span className="cluster-legend-swatch" />
+                  <span>
+                    Teal outline = close neighbors — pair them to share a day
+                  </span>
+                </div>
+                <ParkPicker
+                  selectedParks={selectedParks}
+                  onToggle={togglePark}
+                  parkNights={parkNights}
+                  onAdjustNights={adjustNights}
+                  activeColors={activeColors}
+                />
+
+                {/* TRIP METER */}
+                <TripMeter
+                  itinerary={itinerary}
+                  headStart={headStart}
+                  onHeadStartToggle={() => setHeadStart((h) => !h)}
+                />
+
+                {/* CITY DAYS (zero-sum against pre-Dallas budget) */}
+                <div className="city-days-card">
+                  <div className="city-days-row">
+                    <span className="city-days-label">Dallas</span>
+                    <div className="city-days-ctrl">
+                      <button
+                        className="city-days-btn"
+                        onClick={() => adjustDallasDays(-1)}
+                        disabled={dallasDays <= 1}
+                      >
+                        −
+                      </button>
+                      <span className="city-days-val">{dallasDays}</span>
+                      <button
+                        className="city-days-btn"
+                        onClick={() => adjustDallasDays(1)}
+                        disabled={dallasDays >= 4}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div className="city-days-row">
+                    <span className="city-days-label">St. Louis</span>
+                    <div className="city-days-ctrl">
+                      <button
+                        className="city-days-btn"
+                        onClick={() => adjustStlDays(-1)}
+                        disabled={stlDays <= 1}
+                      >
+                        −
+                      </button>
+                      <span className="city-days-val">{stlDays}</span>
+                      <button
+                        className="city-days-btn"
+                        onClick={() => adjustStlDays(1)}
+                        disabled={stlDays >= 5}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PRE-DALLAS ITINERARY */}
+                {itinerary.days.length > 0 ? (
+                  <>
+                    <div className="segment-divider" style={{ marginTop: 24 }}>
+                      <div className="segment-divider-line" />
+                      <div className="segment-divider-label">
+                        Leg 1 · Newport Beach → Dallas
+                      </div>
+                      <div className="segment-divider-line" />
+                    </div>
+                    <div
+                      className="fade-in"
+                      key={JSON.stringify(Array.from(selectedParks))}
+                    >
+                      {itinerary.days.map((d, i) => {
+                        const warn = d.driveHours > MAX_DRIVE_PER_DAY;
+                        const title =
+                          i === 0
+                            ? `OC → ${L_PLACES[d.parks[d.parks.length - 1]]?.name || "first stop"}`
+                            : `Day ${i + 1} · ${d.parks
+                                .map((id) => L_PLACES[id]?.name)
+                                .filter(Boolean)
+                                .join(" + ")}`;
+                        return (
+                          <div
+                            key={i}
+                            className={`day-card${warn ? " drive-warn" : ""}`}
+                            style={{ "--variant-color": COLOR }}
+                          >
+                            <div className="day-header">
+                              <div>
+                                <div className="day-num">{nextDay()}</div>
+                                <div className="day-num-sub">day</div>
+                              </div>
+                              <div className="day-meta">
+                                {d.date && (
+                                  <div className="day-date">{d.date}</div>
+                                )}
+                                <div className="day-title">{title}</div>
+                              </div>
+                              {d.driveHours > 0 && (
+                                <div
+                                  className={`day-drive${warn ? " day-drive-warn" : ""}`}
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4l2-5h14l2 5v4a2 2 0 0 1-2 2M5 17a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2m5 0a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2" />
+                                  </svg>
+                                  ~{Math.round(d.driveHours * 10) / 10} hr
+                                  driving{warn ? " ⚠" : ""}
+                                </div>
+                              )}
+                            </div>
+                            {d.parks.map((id) => (
+                              <ParkCard
+                                key={id}
+                                placeId={id}
+                                num={parkCounter.getAndIncrement(id)}
+                                color={COLOR}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })}
+                      {(itinerary.dallasLegs || []).map((leg, i) => (
+                        <DriveDayCard
+                          key={"dal-leg-" + i}
+                          dayNum={nextDay()}
+                          date={leg.date}
+                          title={`Drive ${leg.title}`}
+                          driveHours={leg.driveHours}
+                          overnight={leg.overnight}
+                          warn={
+                            leg.warning || leg.driveHours > MAX_DRIVE_PER_DAY
+                          }
+                          note={leg.note}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <p>Toggle parks below to build your itinerary.</p>
+                  </div>
+                )}
+
+                {/* DALLAS */}
+                <div className="segment-divider">
+                  <div className="segment-divider-line" />
+                  <div className="segment-divider-label">
+                    Leg 2 · Dallas (family)
+                  </div>
+                  <div className="segment-divider-line" />
+                </div>
+                {dallasDayCards.map((d, i) => (
+                  <DayCard
+                    key={"dal-" + i}
+                    day={d}
+                    dayNum={nextDay()}
+                    date={dateForDay(dn)}
+                    dayLabel="day"
+                    color="var(--sage)"
+                    parkCounter={parkCounter}
+                    mandatory
+                  />
+                ))}
+
+                {/* Dallas → STL */}
+                <div className="segment-divider">
+                  <div className="segment-divider-line" />
+                  <div className="segment-divider-label">
+                    Leg 3 · Dallas → St. Louis
+                  </div>
+                  <div className="segment-divider-line" />
+                </div>
+                <DayCard
+                  day={DALLAS_TO_STL}
+                  dayNum={nextDay()}
+                  date={dateForDay(dn)}
+                  dayLabel="day"
+                  color="var(--sage)"
+                  parkCounter={parkCounter}
+                  mandatory
+                />
+
+                {/* STL */}
+                <div className="segment-divider">
+                  <div className="segment-divider-line" />
+                  <div className="segment-divider-label">
+                    Leg 4 · St. Louis (family)
+                  </div>
+                  <div className="segment-divider-line" />
+                </div>
+                {stlDayCards.map((d, i) => (
+                  <DayCard
+                    key={"stl-" + i}
+                    day={d}
+                    dayNum={nextDay()}
+                    date={dateForDay(dn)}
+                    dayLabel="day"
+                    color="var(--sage)"
+                    parkCounter={parkCounter}
+                    mandatory
+                  />
+                ))}
+
+                {/* Post-STL */}
+                <div className="segment-divider">
+                  <div className="segment-divider-line" />
+                  <div className="segment-divider-label">
+                    Leg 5 · St. Louis → Brooklyn
+                  </div>
+                  <div className="segment-divider-line" />
+                </div>
+                <div className="toggle-group" role="tablist">
+                  <button
+                    className="toggle-opt"
+                    data-active={postStlMode === "columbus"}
+                    onClick={() => setPostStlMode("columbus")}
+                  >
+                    Split · Columbus overnight
+                  </button>
+                  <button
+                    className="toggle-opt"
+                    data-active={postStlMode === "bookit"}
+                    onClick={() => setPostStlMode("bookit")}
+                  >
+                    Book it · one push
+                  </button>
+                </div>
+                <p className="section-desc" style={{ marginTop: "6px" }}>
+                  {postStlMode === "columbus"
+                    ? "Two days: 6 hr to Columbus, then 8.5 hr into Brooklyn."
+                    : "~15 hr straight. Two drivers, leave 6 AM."}
+                </p>
+                <div className="fade-in" key={postStlMode}>
+                  {postSeg.map((d, i) => (
+                    <DayCard
+                      key={postStlMode + i}
+                      day={d}
+                      dayNum={nextDay()}
+                      date={dateForDay(dn)}
+                      dayLabel="day"
+                      color={COLOR}
+                      parkCounter={parkCounter}
+                    />
+                  ))}
+                </div>
+
+                <div className="footer">
+                  <strong>America the Beautiful pass</strong> ($80) — pays for
+                  itself after ~3 NPS parks. Buy before departure.
+                  <br />
+                  <br />
+                  Book <strong>Antelope Canyon</strong> and{" "}
+                  <strong>Carlsbad Caverns</strong> timed entry the moment you
+                  commit.
+                  <br />
+                  <br />
+                  <span style={{ opacity: 0.7 }}>
+                    Research compiled April 2026. Verify operating status on
+                    nps.gov and campground availability on recreation.gov before
+                    departure.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="timeline-bar">
+              <DayTimeline
+                itinerary={itinerary}
+                dallasDays={dallasDays}
+                stlDays={stlDays}
+                headStart={headStart}
+                totalDays={totalDays}
+                activeColors={activeColors}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
