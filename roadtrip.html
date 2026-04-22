@@ -3888,8 +3888,11 @@
           date: slotDate(0),
         });
 
-        // Park slots — one stop per park; only first park of each day gets the date
-        for (let i = 0; i < maxDays; i++) {
+        // Park slots — one stop per park; only first park of each day gets the date.
+        // Render all packed days (including overflow past maxDays) so overloaded
+        // trips show every selected park, with overflow pills flagged red.
+        const renderDays = Math.max(maxDays, days.length);
+        for (let i = 0; i < renderDays; i++) {
           const day = days[i];
           if (!day) {
             stops.push({
@@ -3907,6 +3910,7 @@
               label: tlName(pid) + (day.extraNight && j === 0 ? " 🌙" : ""),
               locId: pid,
               date: j === 0 ? dayDate : null,
+              overflow: itinerary.overLimit,
             });
           });
         }
@@ -3920,6 +3924,7 @@
             label: "Dallas",
             locId: "dallas",
             date: slotDate(dallasStart + i),
+            overflow: itinerary.overLimit,
           });
         }
         for (let i = 0; i < stlDays; i++) {
@@ -3928,6 +3933,7 @@
             label: "STL",
             locId: "st-louis",
             date: slotDate(stlStart + i),
+            overflow: itinerary.overLimit,
           });
         }
 
@@ -3936,7 +3942,6 @@
           label: "Brooklyn",
           locId: "brooklyn",
           date: totalDays > 0 ? slotDate(totalDays - 1) : null,
-          overflow: itinerary.overLimit,
         });
 
         function renderConnector(from, to, key) {
@@ -3974,6 +3979,7 @@
             pillStyle = {
               background: "var(--terracotta)",
               borderColor: "var(--terracotta)",
+              color: "#fff",
             };
           }
           const labelStyle = s.overflow
