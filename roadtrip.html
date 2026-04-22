@@ -2939,7 +2939,7 @@
           }
           postSeg.forEach((d) =>
             (d.wps || []).forEach((wp) =>
-              seq.push({ id: wp, kind: "waypoint" }),
+              seq.push({ id: wp, kind: "passthrough" }),
             ),
           );
           seq.push({ id: "brooklyn", kind: "endpoint" });
