@@ -4646,8 +4646,9 @@
             : undefined;
           const span = s.span && s.span > 1 ? s.span : 1;
           const slotClsFinal = span > 1 ? `${slotCls} multi-day` : slotCls;
+          const SLOT_WIDTH_PX = 56; // matches .tl-slot min-width
           const slotStyle =
-            span > 1 ? { minWidth: `${56 * span}px` } : undefined;
+            span > 1 ? { minWidth: `${SLOT_WIDTH_PX * span}px` } : undefined;
           const moons =
             s.nights && s.nights > 1 ? "🌙".repeat(s.nights) + " " : "";
           return (
