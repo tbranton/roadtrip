@@ -1272,6 +1272,20 @@
         padding: 0 8px;
         white-space: nowrap;
       }
+      /* Multi-day stays (e.g. Dallas ×2) — one pill spans N slots and
+         shows N moons inline. Date label underneath is a range. */
+      .tl-slot.multi-day {
+        flex: 0 0 auto;
+      }
+      .tl-slot.multi-day .tl-bubble.filled.fixed {
+        width: 100%;
+        max-width: none;
+        justify-content: center;
+        letter-spacing: 0.5px;
+      }
+      .tl-slot.multi-day .tl-label {
+        max-width: none;
+      }
       .tl-label {
         font-size: 9px;
         color: var(--ink-muted, #bbb);
@@ -4523,15 +4537,20 @@
             overflow: itinerary.overLimit,
           });
         }
-        for (let i = 0; i < dallasDays; i++) {
-          stops.push({
-            type: "fixed",
-            label: "Dallas",
-            locId: "dallas",
-            date: slotDate(dallasStart + i),
-            overflow: itinerary.overLimit,
-          });
-        }
+        // Dallas stay — one proportional pill spanning `dallasDays`. Inline
+        // moons reflect night count; date text shows range when > 1 night.
+        stops.push({
+          type: "fixed",
+          label: "Dallas",
+          locId: "dallas",
+          date:
+            dallasDays > 1
+              ? `${slotDate(dallasStart)} – ${slotDate(dallasStart + dallasDays - 1)}`
+              : slotDate(dallasStart),
+          span: dallasDays,
+          nights: dallasDays,
+          overflow: itinerary.overLimit,
+        });
         // Dallas → STL transit day (the +1 between the two city stays).
         stops.push({
           type: "drive-day",
@@ -4540,15 +4559,18 @@
           date: slotDate(stlStart - 1),
           overflow: itinerary.overLimit,
         });
-        for (let i = 0; i < stlDays; i++) {
-          stops.push({
-            type: "fixed",
-            label: "STL",
-            locId: "st-louis",
-            date: slotDate(stlStart + i),
-            overflow: itinerary.overLimit,
-          });
-        }
+        stops.push({
+          type: "fixed",
+          label: "STL",
+          locId: "st-louis",
+          date:
+            stlDays > 1
+              ? `${slotDate(stlStart)} – ${slotDate(stlStart + stlDays - 1)}`
+              : slotDate(stlStart),
+          span: stlDays,
+          nights: stlDays,
+          overflow: itinerary.overLimit,
+        });
 
         // Post-STL days: one pill per postSeg day. The last day's overnight
         // is always Brooklyn — that's handled by the endpoint pill below,
@@ -4622,9 +4644,16 @@
           const labelStyle = s.overflow
             ? { color: "var(--terracotta)", fontWeight: 600 }
             : undefined;
+          const span = s.span && s.span > 1 ? s.span : 1;
+          const slotClsFinal = span > 1 ? `${slotCls} multi-day` : slotCls;
+          const slotStyle =
+            span > 1 ? { minWidth: `${56 * span}px` } : undefined;
+          const moons =
+            s.nights && s.nights > 1 ? "🌙".repeat(s.nights) + " " : "";
           return (
-            <div key={"s" + i} className={slotCls}>
+            <div key={"s" + i} className={slotClsFinal} style={slotStyle}>
               <div className={cls} style={pillStyle}>
+                {moons}
                 {s.label}
               </div>
               <div className="tl-label" style={labelStyle}>
