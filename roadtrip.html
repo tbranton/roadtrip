@@ -3090,6 +3090,7 @@
         itinerary,
         postStlMode,
         userSleepStops = [],
+        onAddSleepStop,
         onRemoveSleepStop,
       }) {
         const mapRef = useRef(null);
@@ -3164,11 +3165,63 @@
             lineCap: "round",
             lineJoin: "round",
           }).addTo(layer);
-          L.polyline(line, {
+          // Thick invisible-ish overlay doubles as a generous click target.
+          const clickHit = L.polyline(line, {
             color: COLOR_HEX,
             weight: 10,
             opacity: 0.12,
           }).addTo(layer);
+
+          // Map each packed day → vertex index in `seq` of its last park.
+          // Used to translate a click's segment index into `afterDayIdx`.
+          const seqIdxById = new Map();
+          seq.forEach((s, i) => {
+            if (!seqIdxById.has(s.id)) seqIdxById.set(s.id, i);
+          });
+          const dayEndSeqIdx = itinerary.days.map((d) => {
+            const last = d.parks[d.parks.length - 1];
+            return seqIdxById.get(last) ?? 0;
+          });
+
+          clickHit.on("click", (e) => {
+            if (!onAddSleepStop) return;
+            const { lat, lng } = e.latlng;
+            // Find nearest segment by projecting latlng onto each segment.
+            let bestSeg = 0;
+            let bestDist = Infinity;
+            for (let i = 0; i < line.length - 1; i++) {
+              const [ax, ay] = line[i];
+              const [bx, by] = line[i + 1];
+              const dx = bx - ax;
+              const dy = by - ay;
+              const len2 = dx * dx + dy * dy || 1;
+              const t = Math.max(
+                0,
+                Math.min(1, ((lat - ax) * dx + (lng - ay) * dy) / len2),
+              );
+              const px = ax + t * dx;
+              const py = ay + t * dy;
+              const d2 = (lat - px) ** 2 + (lng - py) ** 2;
+              if (d2 < bestDist) {
+                bestDist = d2;
+                bestSeg = i;
+              }
+            }
+            // afterDayIdx = first day whose last-park vertex is ≥ bestSeg.
+            // That day gets pushed; the drop "sits after" the prior day.
+            let afterDayIdx = dayEndSeqIdx.findIndex((v) => v > bestSeg);
+            if (afterDayIdx === -1)
+              afterDayIdx = Math.max(0, itinerary.days.length - 1);
+            else afterDayIdx = Math.max(0, afterDayIdx - 1);
+            const id = `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            onAddSleepStop({
+              id,
+              lat,
+              lng,
+              label: `Sleep stop (${lat.toFixed(2)}, ${lng.toFixed(2)})`,
+              afterDayIdx,
+            });
+          });
 
           let stopNum = 0;
           seq.forEach((s) => {
@@ -5035,6 +5088,9 @@
               itinerary={itinerary}
               postStlMode={postStlMode}
               userSleepStops={userSleepStops}
+              onAddSleepStop={(entry) =>
+                setUserSleepStops((prev) => [...prev, entry])
+              }
               onRemoveSleepStop={(id) =>
                 setUserSleepStops((prev) => prev.filter((s) => s.id !== id))
               }
