@@ -974,6 +974,15 @@
         opacity: 0.75;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
       }
+      /* User-placed sleep stop (click-to-drop along route). Warm neutral
+         to read as "your stop" vs the terracotta route markers. */
+      .marker-pin.sleep-drop {
+        background: #c9b59a;
+        border-color: var(--cream);
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+      }
       .leaflet-popup-content-wrapper {
         border-radius: 3px;
         background: var(--cream-soft);
@@ -3077,7 +3086,12 @@
       /* ============================================================
    MAP COMPONENT
    ============================================================ */
-      function MapPanel({ itinerary, postStlMode }) {
+      function MapPanel({
+        itinerary,
+        postStlMode,
+        userSleepStops = [],
+        onRemoveSleepStop,
+      }) {
         const mapRef = useRef(null);
         const instanceRef = useRef(null);
         const layerRef = useRef(null);
@@ -3229,13 +3243,40 @@
             }
           });
 
+          // User-placed sleep stops overlay the polyline. Warm-neutral
+          // bed-glyph markers; click to remove.
+          userSleepStops.forEach((s) => {
+            if (typeof s.lat !== "number" || typeof s.lng !== "number") return;
+            const icon = L.divIcon({
+              className: "",
+              html: `<div class="marker-pin sleep-drop" title="${s.label || "Sleep stop"}">🛏</div>`,
+              iconSize: [22, 22],
+              iconAnchor: [11, 11],
+            });
+            const popup = `<strong>${s.label || "Sleep stop"}</strong><br/><a href="#" data-remove-sleep="${s.id}">Remove</a>`;
+            const marker = L.marker([s.lat, s.lng], { icon })
+              .bindPopup(popup)
+              .addTo(layer);
+            marker.on("popupopen", (e) => {
+              const el = e.popup
+                .getElement()
+                ?.querySelector(`[data-remove-sleep="${s.id}"]`);
+              if (el) {
+                el.addEventListener("click", (ev) => {
+                  ev.preventDefault();
+                  onRemoveSleepStop?.(s.id);
+                });
+              }
+            });
+          });
+
           const bounds = L.latLngBounds(line);
           m.flyToBounds(bounds, {
             padding: [30, 30],
             duration: 0.6,
             maxZoom: 6,
           });
-        }, [itinerary, postStlMode]);
+        }, [itinerary, postStlMode, userSleepStops]);
 
         return (
           <div className="map-panel">
@@ -4844,6 +4885,10 @@
         const [parkNights, setParkNights] = useState(new Map());
         const [dallasDays, setDallasDays] = useState(2);
         const [stlDays, setStlDays] = useState(2);
+        // User-placed overnight stops along the route (click-to-drop).
+        // Shape: { id, lat, lng, label, afterDayIdx }. Packer stays
+        // park-focused; these are overlay data merged at render time.
+        const [userSleepStops, setUserSleepStops] = useState([]);
 
         function adjustDallasDays(d) {
           setDallasDays((prev) => Math.max(1, Math.min(4, prev + d)));
@@ -4986,7 +5031,14 @@
               </div>
             </header>
 
-            <MapPanel itinerary={itinerary} postStlMode={postStlMode} />
+            <MapPanel
+              itinerary={itinerary}
+              postStlMode={postStlMode}
+              userSleepStops={userSleepStops}
+              onRemoveSleepStop={(id) =>
+                setUserSleepStops((prev) => prev.filter((s) => s.id !== id))
+              }
+            />
 
             <div className="content-panel" ref={contentRef}>
               <div className="content-inner">
