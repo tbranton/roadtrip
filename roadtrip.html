@@ -1269,6 +1269,16 @@
         border-color: var(--ink-soft, #888);
         font-size: 9px;
       }
+      /* User-placed sleep drop — warm neutral with bed glyph. Reads as
+         "your overnight" distinct from terracotta park pills and dashed
+         pass-throughs. */
+      .tl-bubble.filled.sleep-drop {
+        background: #c9b59a;
+        border-color: #c9b59a;
+        color: #fff;
+        font-size: 12px;
+        padding: 0 10px;
+      }
       .tl-bubble.fixed {
         background: var(--cream-deep);
         border-color: var(--rule);
@@ -4570,13 +4580,31 @@
         totalDays = 0,
         activeColors = {},
         postStlMode = "pittsburgh",
+        userSleepStops = [],
       }) {
         const { days, maxDays } = itinerary;
         const TL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        function slotDate(i) {
+        // Sleep drops shift every subsequent calendar slot by +1 day each.
+        // afterDayIdx is in packed-day-index space (0..days.length-1).
+        const sortedDrops = [...userSleepStops].sort(
+          (a, b) => a.afterDayIdx - b.afterDayIdx,
+        );
+        function dropsBefore(packIdx) {
+          let c = 0;
+          for (const d of sortedDrops) if (d.afterDayIdx < packIdx) c++;
+          return c;
+        }
+        function calDate(calIdx) {
           const base = headStart ? new Date(2026, 4, 7) : new Date(2026, 4, 8);
-          const d = new Date(base.getTime() + i * 86400000);
+          const d = new Date(base.getTime() + calIdx * 86400000);
           return `${TL_DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`;
+        }
+        function slotDate(i) {
+          return calDate(i + dropsBefore(i));
+        }
+        function dropDate(j) {
+          const d = sortedDrops[j];
+          return calDate(d.afterDayIdx + 1 + j);
         }
 
         const stops = [];
@@ -4612,6 +4640,16 @@
               date: isDateSlot ? dayDate : null,
               overflow: itinerary.overLimit,
               passthrough: isPass,
+            });
+          });
+          // Emit user-placed sleep drops that sit after this packed day.
+          sortedDrops.forEach((d, j) => {
+            if (d.afterDayIdx !== i) return;
+            stops.push({
+              type: "sleep-drop",
+              label: "🛏",
+              locId: d.id,
+              date: dropDate(j),
             });
           });
         }
@@ -4688,7 +4726,9 @@
           type: "endpoint",
           label: "Brooklyn",
           locId: "brooklyn",
-          date: totalDays > 0 ? slotDate(totalDays - 1) : null,
+          // totalDays already counts sleep drops (via App's computedDays),
+          // so use calDate directly — slotDate would double-shift.
+          date: totalDays > 0 ? calDate(totalDays - 1) : null,
         });
 
         function renderConnector(from, to, key) {
@@ -4714,7 +4754,9 @@
                 ? "tl-bubble"
                 : s.type === "drive-day"
                   ? "tl-bubble filled drive-day"
-                  : `tl-bubble filled${s.type === "park-extra" ? " extra-night" : ""}${s.type === "fixed" ? " fixed" : ""}${s.passthrough ? " passthrough" : ""}`;
+                  : s.type === "sleep-drop"
+                    ? "tl-bubble filled sleep-drop"
+                    : `tl-bubble filled${s.type === "park-extra" ? " extra-night" : ""}${s.type === "fixed" ? " fixed" : ""}${s.passthrough ? " passthrough" : ""}`;
           const prev = i > 0 ? stops[i - 1] : null;
           const emDashFromPrev =
             prev && prev.locId && s.locId && sharesCluster(prev.locId, s.locId);
@@ -5022,7 +5064,12 @@
         const postSeg =
           POST_STL_CITIES[postStlMode]?.days ?? POST_STL_CITIES.pittsburgh.days;
         const computedDays =
-          itinerary.daysNeeded + dallasDays + 1 + stlDays + postSeg.length;
+          itinerary.daysNeeded +
+          dallasDays +
+          1 +
+          stlDays +
+          postSeg.length +
+          userSleepStops.length;
         // Preserve the head-start buffer: when enabled, the trip calendar
         // stays Thu 5/7 → Sun 5/17 (11 days) even if pass-throughs shrink
         // the pre-Dallas pack. Unused days appear as slack between STL and
@@ -5396,6 +5443,7 @@
                 totalDays={totalDays}
                 activeColors={activeColors}
                 postStlMode={postStlMode}
+                userSleepStops={userSleepStops}
               />
             </div>
           </div>
