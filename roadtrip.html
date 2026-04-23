@@ -4496,6 +4496,7 @@
         headStart = false,
         totalDays = 0,
         activeColors = {},
+        postStlMode = "pittsburgh",
       }) {
         const { days, maxDays } = itinerary;
         const TL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -4555,6 +4556,18 @@
         const { daysNeeded = 0 } = itinerary;
         const dallasStart = daysNeeded; // drive-to-Dallas is already in daysNeeded
         const stlStart = dallasStart + dallasDays + 1; // +1 for drive-to-STL
+
+        // Drive-to-Dallas transit day (the +1 baked into daysNeeded via
+        // dallasLegs). Its date is slotDate(dallasStart - 1).
+        if (dallasStart > 0 && days.length > 0) {
+          stops.push({
+            type: "drive-day",
+            label: "→ Dallas",
+            locId: null,
+            date: slotDate(dallasStart - 1),
+            overflow: itinerary.overLimit,
+          });
+        }
         for (let i = 0; i < dallasDays; i++) {
           stops.push({
             type: "fixed",
@@ -4564,6 +4577,14 @@
             overflow: itinerary.overLimit,
           });
         }
+        // Dallas → STL transit day (the +1 between the two city stays).
+        stops.push({
+          type: "drive-day",
+          label: "→ STL",
+          locId: null,
+          date: slotDate(stlStart - 1),
+          overflow: itinerary.overLimit,
+        });
         for (let i = 0; i < stlDays; i++) {
           stops.push({
             type: "fixed",
@@ -4573,6 +4594,24 @@
             overflow: itinerary.overLimit,
           });
         }
+
+        // Post-STL days: one pill per postSeg day. The last day's overnight
+        // is always Brooklyn — that's handled by the endpoint pill below,
+        // so skip it here. Intermediate postSeg days (e.g. Pittsburgh
+        // overnight) render as fixed city pills.
+        const postSeg =
+          POST_STL_CITIES[postStlMode]?.days ?? POST_STL_CITIES.pittsburgh.days;
+        const postSegStart = stlStart + stlDays;
+        postSeg.forEach((d, i) => {
+          if (i === postSeg.length - 1) return; // final day = Brooklyn
+          stops.push({
+            type: "fixed",
+            label: d.overnight || "→",
+            locId: (d.overnight || "").toLowerCase(),
+            date: slotDate(postSegStart + i),
+            overflow: itinerary.overLimit,
+          });
+        });
 
         stops.push({
           type: "endpoint",
@@ -5271,6 +5310,7 @@
                 headStart={headStart}
                 totalDays={totalDays}
                 activeColors={activeColors}
+                postStlMode={postStlMode}
               />
             </div>
           </div>
