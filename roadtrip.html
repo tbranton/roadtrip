@@ -1546,16 +1546,6 @@
       }
 
       /* --- Drive-warn day card --- */
-      .head-start-note {
-        margin: 8px 0 4px;
-        padding: 10px 14px;
-        background: var(--cream-soft);
-        border-left: 3px solid #c9b59a;
-        font-size: 13px;
-        line-height: 1.5;
-        color: var(--ink-soft);
-        font-style: italic;
-      }
       .day-card.drive-warn {
         border-color: var(--terracotta);
       }
@@ -2982,31 +2972,6 @@
           }
         }
         if (currentDay.parks.length > 0) days.push(currentDay);
-
-        // Head-start: break up the long OC→first-park drive with an explicit
-        // Thursday "drive-out" day. Thu ~6.5 hr to an AZ motel en route,
-        // Fri finishes the drive and starts parks. Only prepended when the
-        // head-start budget exists; MAX_DAYS already reserves its slot.
-        const HEAD_START_HOURS = 6.5;
-        if (headStart && days.length > 0) {
-          days.unshift({
-            parks: [],
-            driveHours: HEAD_START_HOURS,
-            visitHours: 0,
-            totalHours: HEAD_START_HOURS,
-            date: "",
-            headStartDrive: true,
-          });
-          // The following day's drive already modeled Newport→park as one
-          // straight shot. Subtract the head-start chunk that's now yesterday.
-          if (days[1]) {
-            days[1].driveHours = Math.max(
-              0,
-              days[1].driveHours - HEAD_START_HOURS,
-            );
-            days[1].totalHours = days[1].driveHours + days[1].visitHours;
-          }
-        }
 
         // Trailing pass-throughs (no overnight after them): fold onto the last day's drive.
         if (pending.length > 0 && days.length > 0) {
@@ -4523,16 +4488,6 @@
         for (let i = 0; i < days.length; i++) {
           const day = days[i];
           const dayDate = slotDate(i);
-          if (day.headStartDrive) {
-            stops.push({
-              type: "drive-day",
-              label: "en route",
-              locId: null,
-              date: dayDate,
-              overflow: itinerary.overLimit,
-            });
-            continue;
-          }
           // Index of the first overnight park on this day — the date label
           // belongs on that pill, not on leading pass-throughs.
           const firstOvernightIdx = day.parks.findIndex(
@@ -5099,9 +5054,8 @@
                         const lastParkName = firstOvernightPark
                           ? L_PLACES[firstOvernightPark]?.name
                           : L_PLACES[d.parks[d.parks.length - 1]]?.name;
-                        const title = d.headStartDrive
-                          ? "OC → AZ motel en route"
-                          : i === 0
+                        const title =
+                          i === 0
                             ? `OC → ${lastParkName || "first stop"}`
                             : `Day ${i + 1} · ${d.parks
                                 .map((id) => L_PLACES[id]?.name)
@@ -5141,13 +5095,6 @@
                                 </div>
                               )}
                             </div>
-                            {d.headStartDrive && (
-                              <div className="head-start-note">
-                                Head-start drive. Motel stop en route
-                                recommended — break the push so you arrive at
-                                the first park fresh on Friday.
-                              </div>
-                            )}
                             {d.parks.map((id) => (
                               <ParkCard
                                 key={id}
